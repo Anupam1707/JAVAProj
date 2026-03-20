@@ -8,7 +8,9 @@ import java.awt.Color;
  *
  * @author Arjun
  */
-public class PrivateCar extends Vehicle {
+// Moved to backup. See backup/src/com/smartcity/traffic/PrivateCar.java
+// This file has been replaced with a backup notice.
+// Please refer to the backup location for the original code.
 
     /** Default constructor – classic light-blue car. */
     public PrivateCar(int x, int y, String laneID) {
