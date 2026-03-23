@@ -9,6 +9,8 @@ public class TrafficSimulator {
     private int currentLight;
     private int cycleTime;
     private boolean ambulancePresent;
+    private int carsPassed;
+    private int ambulancesPassed;
 
     public TrafficSimulator() {
         lights = new TrafficLight[] {
@@ -21,12 +23,28 @@ public class TrafficSimulator {
         currentLight = 0;
         cycleTime = 0;
         ambulancePresent = false;
+        carsPassed = 0;
+        ambulancesPassed = 0;
     }
 
     public void run() {
         Scanner sc = new Scanner(System.in);
         System.out.println("Smart Traffic Simulator (Simplified)");
-        System.out.println("Commands: addcar, addambulance, tick, exit");
+        System.out.println("Commands: addcar, addambulance, exit");
+
+        Thread tickThread = new Thread(() -> {
+            while (true) {
+                tick();
+                try {
+                    Thread.sleep(1000); // 1 second interval
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        tickThread.setDaemon(true);
+        tickThread.start();
+
         while (true) {
             System.out.print("Enter command: ");
             String cmd = sc.nextLine();
@@ -37,9 +55,8 @@ public class TrafficSimulator {
                 vehicles.add(new Ambulance(lights[currentLight].direction));
                 ambulancePresent = true;
                 System.out.println("Ambulance added.");
-            } else if (cmd.equals("tick")) {
-                tick();
             } else if (cmd.equals("exit")) {
+                tickThread.interrupt();
                 break;
             }
         }
@@ -53,7 +70,7 @@ public class TrafficSimulator {
             for (int i = 0; i < lights.length; i++) {
                 lights[i].setState(i == currentLight ? "GREEN" : "RED");
             }
-            System.out.println("Emergency! Ambulance lane green for 3 seconds.");
+            // Emergency countdown handled in GUI
             if (cycleTime >= 3) {
                 ambulancePresent = false;
                 cycleTime = 0;
@@ -63,15 +80,49 @@ public class TrafficSimulator {
             for (int i = 0; i < lights.length; i++) {
                 lights[i].setState(i == currentLight ? "GREEN" : "RED");
             }
-            System.out.println("Normal cycle. Lane " + lights[currentLight].direction + " is GREEN.");
+            // Normal countdown handled in GUI
             if (cycleTime >= 20) {
                 cycleTime = 0;
                 nextLight();
             }
         }
         for (Vehicle v : vehicles) {
+            boolean wasPassed = v.passed;
             v.move(lights[currentLight].direction, lights[currentLight].state);
+            if (!wasPassed && v.passed) {
+                if (v instanceof Car) carsPassed++;
+                if (v instanceof Ambulance) ambulancesPassed++;
+            }
         }
+    }
+
+    // GUI metric methods (add getCountdown)
+    public int getCountdown() {
+        return ambulancePresent ? (3 - cycleTime) : (20 - cycleTime);
+    }
+
+    // GUI metric methods
+    public String getCurrentLane() {
+        return lights[currentLight].direction;
+    }
+    public int getCarCount() {
+        int count = 0;
+        for (Vehicle v : vehicles) if (v instanceof Car && !v.passed) count++;
+        return count;
+    }
+    public int getAmbulanceCount() {
+        int count = 0;
+        for (Vehicle v : vehicles) if (v instanceof Ambulance && !v.passed) count++;
+        return count;
+    }
+    public int getCarsPassed() {
+        return carsPassed;
+    }
+    public int getAmbulancesPassed() {
+        return ambulancesPassed;
+    }
+    public boolean isEmergency() {
+        return ambulancePresent;
     }
 
     private void nextLight() {
