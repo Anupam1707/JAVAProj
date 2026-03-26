@@ -70,4 +70,3 @@ public class TrafficLight {
 
     public static int getYellowTime() { return YELLOW_TIME; }
 }
-// Moved to backup. See backup/src/com/smartcity/traffic/TrafficLight.java

@@ -1,11 +1,7 @@
 package com.smartcity.traffic;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -20,6 +16,9 @@ import java.util.Random;
  * @author Anupam
  */
 public class TrafficSimulatorGUI extends JFrame {
+    private static final long serialVersionUID = 1L;
+    // Responsive control panel width
+    private final int controlPanelWidth;
 
     // ── GUI Components ────────────────────────────────────────────────────────
     private IntersectionPanel intersectionPanel;
@@ -49,14 +48,15 @@ public class TrafficSimulatorGUI extends JFrame {
     // ── Statistics ────────────────────────────────────────────────────────────
     private int totalVehiclesPassed;
     private int totalAmbulances;
-    private long simulationStartTime;
 
     // ── Constants ─────────────────────────────────────────────────────────────
-    private static final int WINDOW_WIDTH = 1200;
-    private static final int WINDOW_HEIGHT = 850;
-    private static final int INTERSECTION_SIZE = 750;
+    private static final Dimension SCREEN_SIZE = Toolkit.getDefaultToolkit().getScreenSize();
+    private static final int WINDOW_WIDTH = (int) (SCREEN_SIZE.width * 0.85);
+    private static final int WINDOW_HEIGHT = (int) (SCREEN_SIZE.height * 0.85);
+    private static final int INTERSECTION_SIZE = (int) (Math.min(WINDOW_WIDTH, WINDOW_HEIGHT) * 0.7);
     private static final int BASE_TIMER_DELAY = 50; // ms – base animation refresh
     private static final int UPDATE_DELAY = 1000; // ms – signal update rate
+    private static final int ROAD_HALF_WIDTH = 70; // half of the 140px road width
 
     // Curated car colour palette for visual variety
     private static final Color[] CAR_COLORS = {
@@ -75,15 +75,27 @@ public class TrafficSimulatorGUI extends JFrame {
     // ── Constructor ───────────────────────────────────────────────────────────
 
     public TrafficSimulatorGUI() {
+        this.controlPanelWidth = (int) (WINDOW_WIDTH * 0.23);
         super("Smart City Traffic Simulator v1.1");
 
         vehicles = new ArrayList<>();
         trafficController = new TrafficController();
         trafficController.setVehicles(vehicles);
 
+        // Configure Vehicle geometry to match the actual rendered panel size.
+        // Both the collision/approach logic in Vehicle and the spawn coordinates
+        // below derive from this single source of truth.
+        int panelCenter = INTERSECTION_SIZE / 2;
+        Vehicle.setIntersectionParams(panelCenter, panelCenter, ROAD_HALF_WIDTH);
+        // ── Per-lane offsets (px from road centre) – tune each direction independently
+        // ──
+        Vehicle.NORTH_LANE_OFFSET = 35;
+        Vehicle.SOUTH_LANE_OFFSET = 35;
+        Vehicle.EAST_LANE_OFFSET = 35;
+        Vehicle.WEST_LANE_OFFSET = 35;
+
         totalVehiclesPassed = 0;
         totalAmbulances = 0;
-        simulationStartTime = System.currentTimeMillis();
 
         setupFrame();
         createControlPanel();
@@ -94,11 +106,13 @@ public class TrafficSimulatorGUI extends JFrame {
     // ── Frame setup ───────────────────────────────────────────────────────────
 
     private void setupFrame() {
-        setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+        setUndecorated(true);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         setResizable(false);
         setLocationRelativeTo(null);
+        setVisible(true);
     }
 
     // ── Control panel ─────────────────────────────────────────────────────────
@@ -106,7 +120,7 @@ public class TrafficSimulatorGUI extends JFrame {
     private void createControlPanel() {
         controlPanel = new JPanel();
         controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
-        controlPanel.setPreferredSize(new Dimension(280, WINDOW_HEIGHT));
+        controlPanel.setPreferredSize(new Dimension(controlPanelWidth, WINDOW_HEIGHT));
         controlPanel.setBackground(new Color(45, 45, 48));
         controlPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
@@ -114,7 +128,7 @@ public class TrafficSimulatorGUI extends JFrame {
         JPanel titlePanel = new JPanel(new BorderLayout());
         titlePanel.setBackground(new Color(30, 30, 33));
         titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        titlePanel.setMaximumSize(new Dimension(280, 60));
+        titlePanel.setMaximumSize(new Dimension(controlPanelWidth, 60));
         JLabel titleLabel = new JLabel("🚦 TRAFFIC CONTROL", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
         titleLabel.setForeground(new Color(100, 200, 255));
@@ -197,7 +211,7 @@ public class TrafficSimulatorGUI extends JFrame {
         speedSlider.setSnapToTicks(true);
         speedSlider.setBackground(new Color(30, 30, 33));
         speedSlider.setForeground(new Color(200, 200, 200));
-        speedSlider.setMaximumSize(new Dimension(250, 40));
+        speedSlider.setMaximumSize(new Dimension((int) (controlPanelWidth * 0.9), 40));
         speedSlider.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel[] speedLabels = {
                 new JLabel("0.5×"), new JLabel("1×"), new JLabel("2×"), new JLabel("4×")
@@ -249,7 +263,11 @@ public class TrafficSimulatorGUI extends JFrame {
 
         controlPanel.add(emergencyPanel);
 
-        add(controlPanel, BorderLayout.EAST);
+        JScrollPane scrollPane = new JScrollPane(controlPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setPreferredSize(new Dimension(controlPanelWidth + 30, WINDOW_HEIGHT));
+        scrollPane.setBorder(null);
+        add(scrollPane, BorderLayout.EAST);
     }
 
     // ── Intersection panel ────────────────────────────────────────────────────
@@ -394,39 +412,38 @@ public class TrafficSimulatorGUI extends JFrame {
         Random random = new Random();
         int count = 5 + random.nextInt(4); // 5–8 vehicles
 
-        int centerX = 375, centerY = 375;
-        int intersectionHalfWidth = 70;
-        int laneOffset = 35;
+        int cx = INTERSECTION_SIZE / 2;
+        int cy = INTERSECTION_SIZE / 2;
         int spacing = 70;
         int startDistance = 150;
 
         for (int i = 0; i < count; i++) {
-            int vehicleType = random.nextInt(3); // 0=Car, 1=Bus, 2=Motorcycle
+            int vehicleType = random.nextInt(3);
             Vehicle vehicle;
 
             switch (laneID) {
                 case "NORTH":
                     vehicle = createVehicle(vehicleType,
-                            centerX + laneOffset,
-                            centerY + intersectionHalfWidth + startDistance + (i * spacing),
+                            cx + Vehicle.NORTH_LANE_OFFSET,
+                            cy + ROAD_HALF_WIDTH + startDistance + (i * spacing),
                             laneID);
                     break;
                 case "SOUTH":
                     vehicle = createVehicle(vehicleType,
-                            centerX - laneOffset,
-                            centerY - intersectionHalfWidth - startDistance - (i * spacing),
+                            cx - Vehicle.SOUTH_LANE_OFFSET,
+                            cy - ROAD_HALF_WIDTH - startDistance - (i * spacing),
                             laneID);
                     break;
                 case "EAST":
                     vehicle = createVehicle(vehicleType,
-                            centerX - intersectionHalfWidth - startDistance - (i * spacing),
-                            centerY + laneOffset,
+                            cx - ROAD_HALF_WIDTH - startDistance - (i * spacing),
+                            cy + Vehicle.EAST_LANE_OFFSET,
                             laneID);
                     break;
                 case "WEST":
                     vehicle = createVehicle(vehicleType,
-                            centerX + intersectionHalfWidth + startDistance + (i * spacing),
-                            centerY - laneOffset,
+                            cx + ROAD_HALF_WIDTH + startDistance + (i * spacing),
+                            cy - Vehicle.WEST_LANE_OFFSET,
                             laneID);
                     break;
                 default:
@@ -461,28 +478,27 @@ public class TrafficSimulatorGUI extends JFrame {
         String[] lanes = TrafficController.getLaneSequence();
         String randomLane = lanes[random.nextInt(lanes.length)];
 
-        int centerX = 375, centerY = 375;
-        int intersectionHalfWidth = 70;
-        int laneOffset = 35;
+        int cx = INTERSECTION_SIZE / 2;
+        int cy = INTERSECTION_SIZE / 2;
         int spawnDistance = 200;
 
         Ambulance ambulance;
         switch (randomLane) {
             case "NORTH":
-                ambulance = new Ambulance(centerX + laneOffset,
-                        centerY + intersectionHalfWidth + spawnDistance, randomLane);
+                ambulance = new Ambulance(cx + Vehicle.NORTH_LANE_OFFSET,
+                        cy + ROAD_HALF_WIDTH + spawnDistance, randomLane);
                 break;
             case "SOUTH":
-                ambulance = new Ambulance(centerX - laneOffset,
-                        centerY - intersectionHalfWidth - spawnDistance, randomLane);
+                ambulance = new Ambulance(cx - Vehicle.SOUTH_LANE_OFFSET,
+                        cy - ROAD_HALF_WIDTH - spawnDistance, randomLane);
                 break;
             case "EAST":
-                ambulance = new Ambulance(centerX - intersectionHalfWidth - spawnDistance,
-                        centerY + laneOffset, randomLane);
+                ambulance = new Ambulance(cx - ROAD_HALF_WIDTH - spawnDistance,
+                        cy + Vehicle.EAST_LANE_OFFSET, randomLane);
                 break;
             case "WEST":
-                ambulance = new Ambulance(centerX + intersectionHalfWidth + spawnDistance,
-                        centerY - laneOffset, randomLane);
+                ambulance = new Ambulance(cx + ROAD_HALF_WIDTH + spawnDistance,
+                        cy - Vehicle.WEST_LANE_OFFSET, randomLane);
                 break;
             default:
                 return;
@@ -522,7 +538,7 @@ public class TrafficSimulatorGUI extends JFrame {
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(80, 80, 85), 1),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)));
-        panel.setMaximumSize(new Dimension(280, 500));
+        panel.setMaximumSize(new Dimension(controlPanelWidth, 500));
 
         JLabel titleLabel = new JLabel(title);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 11));
@@ -550,7 +566,7 @@ public class TrafficSimulatorGUI extends JFrame {
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setMaximumSize(new Dimension(250, 35));
+        button.setMaximumSize(new Dimension((int) (controlPanelWidth * 0.9), 35));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
@@ -572,6 +588,7 @@ public class TrafficSimulatorGUI extends JFrame {
 
         public IntersectionPanel() {
             setPreferredSize(new Dimension(INTERSECTION_SIZE, INTERSECTION_SIZE));
+            setMinimumSize(new Dimension(400, 400));
             setBackground(new Color(40, 167, 69)); // grass green
         }
 
@@ -582,10 +599,21 @@ public class TrafficSimulatorGUI extends JFrame {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 
+            // ── Viewport Centering ──────────────────────────────────────────
+            // Center the fixed-size 595x595 physical simulation inside the dynamically resizing panel.
+            // This prevents the top-left alignment issue while keeping vehicle physics deterministic.
+            int xOffset = (getWidth() - INTERSECTION_SIZE) / 2;
+            int yOffset = (getHeight() - INTERSECTION_SIZE) / 2;
+            g2d.translate(xOffset, yOffset);
+
             drawRoads(g2d);
             drawDirectionArrows(g2d);
             drawTrafficLights(g2d);
             drawVehicles(g2d);
+
+            // Revert translation for absolute UI overlays
+            g2d.translate(-xOffset, -yOffset);
+
             drawLegend(g2d);
             drawPauseOverlay(g2d);
         }
@@ -593,52 +621,52 @@ public class TrafficSimulatorGUI extends JFrame {
         // ── Road drawing ──────────────────────────────────────────────────────
 
         private void drawRoads(Graphics2D g2d) {
-            int cx = getWidth() / 2, cy = getHeight() / 2;
+            int cx = INTERSECTION_SIZE / 2, cy = INTERSECTION_SIZE / 2;
             int roadWidth = 140;
 
             // Shadows
             g2d.setColor(new Color(0, 0, 0, 40));
-            g2d.fillRect(cx - roadWidth / 2 + 5, 5, roadWidth, getHeight());
-            g2d.fillRect(5, cy - roadWidth / 2 + 5, getWidth(), roadWidth);
+            g2d.fillRect(cx - roadWidth / 2 + 5, -2000, roadWidth, 4000);
+            g2d.fillRect(-2000, cy - roadWidth / 2 + 5, 4000, roadWidth);
 
             // Vertical road
             GradientPaint vg = new GradientPaint(cx - roadWidth / 2, 0, new Color(55, 55, 55),
                     cx + roadWidth / 2, 0, new Color(75, 75, 75));
             g2d.setPaint(vg);
-            g2d.fillRect(cx - roadWidth / 2, 0, roadWidth, getHeight());
+            g2d.fillRect(cx - roadWidth / 2, -2000, roadWidth, 4000);
 
             // Horizontal road
             GradientPaint hg = new GradientPaint(0, cy - roadWidth / 2, new Color(55, 55, 55),
                     0, cy + roadWidth / 2, new Color(75, 75, 75));
             g2d.setPaint(hg);
-            g2d.fillRect(0, cy - roadWidth / 2, getWidth(), roadWidth);
+            g2d.fillRect(-2000, cy - roadWidth / 2, 4000, roadWidth);
 
             // Road borders
             g2d.setColor(new Color(40, 40, 40));
             g2d.setStroke(new BasicStroke(3));
-            g2d.drawRect(cx - roadWidth / 2, 0, roadWidth, getHeight());
-            g2d.drawRect(0, cy - roadWidth / 2, getWidth(), roadWidth);
+            g2d.drawRect(cx - roadWidth / 2, -2000, roadWidth, 4000);
+            g2d.drawRect(-2000, cy - roadWidth / 2, 4000, roadWidth);
 
             // Dashed yellow lane dividers
             g2d.setColor(new Color(255, 220, 0));
             g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
                     0, new float[] { 15, 10 }, 0));
-            g2d.drawLine(cx, 0, cx, cy - roadWidth / 2);
-            g2d.drawLine(cx, cy + roadWidth / 2, cx, getHeight());
-            g2d.drawLine(0, cy, cx - roadWidth / 2, cy);
-            g2d.drawLine(cx + roadWidth / 2, cy, getWidth(), cy);
+            g2d.drawLine(cx, -2000, cx, cy - roadWidth / 2);
+            g2d.drawLine(cx, cy + roadWidth / 2, cx, 4000);
+            g2d.drawLine(-2000, cy, cx - roadWidth / 2, cy);
+            g2d.drawLine(cx + roadWidth / 2, cy, 4000, cy);
 
             // White road edges
             g2d.setColor(Color.WHITE);
             g2d.setStroke(new BasicStroke(4));
-            g2d.drawLine(cx - roadWidth / 2, 0, cx - roadWidth / 2, cy - roadWidth / 2);
-            g2d.drawLine(cx - roadWidth / 2, cy + roadWidth / 2, cx - roadWidth / 2, getHeight());
-            g2d.drawLine(cx + roadWidth / 2, 0, cx + roadWidth / 2, cy - roadWidth / 2);
-            g2d.drawLine(cx + roadWidth / 2, cy + roadWidth / 2, cx + roadWidth / 2, getHeight());
-            g2d.drawLine(0, cy - roadWidth / 2, cx - roadWidth / 2, cy - roadWidth / 2);
-            g2d.drawLine(cx + roadWidth / 2, cy - roadWidth / 2, getWidth(), cy - roadWidth / 2);
-            g2d.drawLine(0, cy + roadWidth / 2, cx - roadWidth / 2, cy + roadWidth / 2);
-            g2d.drawLine(cx + roadWidth / 2, cy + roadWidth / 2, getWidth(), cy + roadWidth / 2);
+            g2d.drawLine(cx - roadWidth / 2, -2000, cx - roadWidth / 2, cy - roadWidth / 2);
+            g2d.drawLine(cx - roadWidth / 2, cy + roadWidth / 2, cx - roadWidth / 2, 4000);
+            g2d.drawLine(cx + roadWidth / 2, -2000, cx + roadWidth / 2, cy - roadWidth / 2);
+            g2d.drawLine(cx + roadWidth / 2, cy + roadWidth / 2, cx + roadWidth / 2, 4000);
+            g2d.drawLine(-2000, cy - roadWidth / 2, cx - roadWidth / 2, cy - roadWidth / 2);
+            g2d.drawLine(cx + roadWidth / 2, cy - roadWidth / 2, 4000, cy - roadWidth / 2);
+            g2d.drawLine(-2000, cy + roadWidth / 2, cx - roadWidth / 2, cy + roadWidth / 2);
+            g2d.drawLine(cx + roadWidth / 2, cy + roadWidth / 2, 4000, cy + roadWidth / 2);
 
             // Intersection centre
             g2d.setColor(new Color(65, 65, 65));
@@ -662,45 +690,67 @@ public class TrafficSimulatorGUI extends JFrame {
                 g2d.drawLine(cx - roadWidth / 2 - 25, cy - roadWidth / 2 + i,
                         cx - roadWidth / 2 - 10, cy - roadWidth / 2 + i);
             }
+
+            // ── Per-lane stop lines ──────────────────────────────────────────
+            // Thick white bar drawn at the intersection edge, only on the half
+            // of the road that each direction occupies.
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(5, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL));
+
+            // NORTH (moves ↑): stops at SOUTH edge of intersection, RIGHT half of road
+            g2d.drawLine(cx, cy + roadWidth / 2,
+                    cx + roadWidth / 2, cy + roadWidth / 2);
+
+            // SOUTH (moves ↓): stops at NORTH edge of intersection, LEFT half of road
+            g2d.drawLine(cx - roadWidth / 2, cy - roadWidth / 2,
+                    cx, cy - roadWidth / 2);
+
+            // EAST (moves →): stops at WEST edge of intersection, BOTTOM half of road
+            g2d.drawLine(cx - roadWidth / 2, cy,
+                    cx - roadWidth / 2, cy + roadWidth / 2);
+
+            // WEST (moves ←): stops at EAST edge of intersection, TOP half of road
+            g2d.drawLine(cx + roadWidth / 2, cy - roadWidth / 2,
+                    cx + roadWidth / 2, cy);
+
             g2d.setStroke(new BasicStroke(1));
         }
 
         // ── Direction arrows ──────────────────────────────────────────────────
 
         private void drawDirectionArrows(Graphics2D g2d) {
-            int cx = getWidth() / 2, cy = getHeight() / 2;
+            int cx = INTERSECTION_SIZE / 2, cy = INTERSECTION_SIZE / 2;
             int roadWidth = 140;
-            int laneOffset = 35;
 
             g2d.setColor(new Color(255, 255, 255, 60));
             g2d.setFont(new Font("Arial", Font.BOLD, 18));
             FontMetrics fm = g2d.getFontMetrics();
 
-            // North lane (vehicles move up ↑) – right side of vertical road
+            // NORTH lane arrow (↑) – right side of vertical road
             String na = "↑";
-            g2d.drawString(na, cx + laneOffset - fm.stringWidth(na) / 2, cy - roadWidth / 2 - 40);
-            g2d.drawString(na, cx + laneOffset - fm.stringWidth(na) / 2, cy + roadWidth / 2 + 55);
+            g2d.drawString(na, cx + Vehicle.NORTH_LANE_OFFSET - fm.stringWidth(na) / 2, cy - roadWidth / 2 - 40);
+            g2d.drawString(na, cx + Vehicle.NORTH_LANE_OFFSET - fm.stringWidth(na) / 2, cy + roadWidth / 2 + 55);
 
-            // South lane (vehicles move down ↓) – left side of vertical road
+            // SOUTH lane arrow (↓) – left side of vertical road
             String sa = "↓";
-            g2d.drawString(sa, cx - laneOffset - fm.stringWidth(sa) / 2, cy - roadWidth / 2 - 40);
-            g2d.drawString(sa, cx - laneOffset - fm.stringWidth(sa) / 2, cy + roadWidth / 2 + 55);
+            g2d.drawString(sa, cx - Vehicle.SOUTH_LANE_OFFSET - fm.stringWidth(sa) / 2, cy - roadWidth / 2 - 40);
+            g2d.drawString(sa, cx - Vehicle.SOUTH_LANE_OFFSET - fm.stringWidth(sa) / 2, cy + roadWidth / 2 + 55);
 
-            // East lane (vehicles move right →) – bottom of horizontal road
+            // EAST lane arrow (→) – bottom half of horizontal road
             String ea = "→";
-            g2d.drawString(ea, cx - roadWidth / 2 - 50, cy + laneOffset + fm.getAscent() / 2);
-            g2d.drawString(ea, cx + roadWidth / 2 + 30, cy + laneOffset + fm.getAscent() / 2);
+            g2d.drawString(ea, cx - roadWidth / 2 - 50, cy + Vehicle.EAST_LANE_OFFSET + fm.getAscent() / 2);
+            g2d.drawString(ea, cx + roadWidth / 2 + 30, cy + Vehicle.EAST_LANE_OFFSET + fm.getAscent() / 2);
 
-            // West lane (vehicles move left ←) – top of horizontal road
+            // WEST lane arrow (←) – top half of horizontal road
             String wa = "←";
-            g2d.drawString(wa, cx - roadWidth / 2 - 50, cy - laneOffset + fm.getAscent() / 2);
-            g2d.drawString(wa, cx + roadWidth / 2 + 30, cy - laneOffset + fm.getAscent() / 2);
+            g2d.drawString(wa, cx - roadWidth / 2 - 50, cy - Vehicle.WEST_LANE_OFFSET + fm.getAscent() / 2);
+            g2d.drawString(wa, cx + roadWidth / 2 + 30, cy - Vehicle.WEST_LANE_OFFSET + fm.getAscent() / 2);
         }
 
         // ── Traffic lights ────────────────────────────────────────────────────
 
         private void drawTrafficLights(Graphics2D g2d) {
-            int cx = getWidth() / 2, cy = getHeight() / 2;
+            int cx = INTERSECTION_SIZE / 2, cy = INTERSECTION_SIZE / 2;
             int offset = 60;
             drawSingleTrafficLight(g2d, cx - offset, cy - 130, "NORTH");
             drawSingleTrafficLight(g2d, cx + offset, cy + 130, "SOUTH");
@@ -1030,12 +1080,4 @@ public class TrafficSimulatorGUI extends JFrame {
         }
     }
 
-    // ── Application entry point ───────────────────────────────────────────────
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            TrafficSimulatorGUI gui = new TrafficSimulatorGUI();
-            gui.setVisible(true);
-        });
-    }
 }

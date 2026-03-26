@@ -51,10 +51,6 @@ public class Motorcycle extends Vehicle {
         isMoving = true;
         moveInLaneDirection(speed);
     }
-            // Moved to backup. See backup/src/com/smartcity/traffic/Motorcycle.java
-
-            // The Motorcycle class has been moved to a backup location.
-            // Please refer to the backup for the original implementation.
 
     @Override
     public String getVehicleType() {

@@ -17,10 +17,37 @@ public abstract class Vehicle {
     protected String laneID; // "NORTH", "EAST", "SOUTH", "WEST"
     protected boolean isMoving;
 
-    // Intersection boundaries (center square where vehicles must not stop)
-    protected static final int INTERSECTION_CENTER_X = 375; // Center of 750px panel
-    protected static final int INTERSECTION_CENTER_Y = 375;
-    protected static final int INTERSECTION_HALF_WIDTH = 70; // Half of road width
+    // Intersection boundaries – set at runtime by TrafficSimulatorGUI to match the actual panel size.
+    protected static int INTERSECTION_CENTER_X = 375;
+    protected static int INTERSECTION_CENTER_Y = 375;
+    protected static int INTERSECTION_HALF_WIDTH = 70; // half of road width (road = 140 px)
+
+    /** Per-lane offsets from road centre. Set independently in TrafficSimulatorGUI. */
+    public static int NORTH_LANE_OFFSET = 35; // x-offset: NORTH vehicles spawn right of centre
+    public static int SOUTH_LANE_OFFSET = 35; // x-offset: SOUTH vehicles spawn left of centre
+    public static int EAST_LANE_OFFSET  = 35; // y-offset: EAST  vehicles spawn below centre
+    public static int WEST_LANE_OFFSET  = 35; // y-offset: WEST  vehicles spawn above centre
+
+    /**
+     * Configures the shared intersection geometry so all vehicles use coordinates
+     * that match the live rendering panel, regardless of screen resolution.
+     * Must be called once at application start (before any vehicles are spawned).
+     *
+     * @param centerX    X coordinate of intersection centre in panel space
+     * @param centerY    Y coordinate of intersection centre in panel space
+     * @param halfWidth  Half the road width (pixels)
+     */
+    public static void setIntersectionParams(int centerX, int centerY, int halfWidth) {
+        INTERSECTION_CENTER_X = centerX;
+        INTERSECTION_CENTER_Y = centerY;
+        INTERSECTION_HALF_WIDTH = halfWidth;
+        // Default all lane offsets to halfWidth/2; override individually after this call.
+        int defaultOffset = halfWidth / 2;
+        NORTH_LANE_OFFSET = defaultOffset;
+        SOUTH_LANE_OFFSET = defaultOffset;
+        EAST_LANE_OFFSET  = defaultOffset;
+        WEST_LANE_OFFSET  = defaultOffset;
+    }
 
     /**
      * Constructor for Vehicle
@@ -130,7 +157,11 @@ public abstract class Vehicle {
      * @return true if vehicle has left the visible area
      */
     public boolean hasPassedIntersection() {
-        return x > 800 || x < -100 || y > 800 || y < -100;
+        // Panel is (INTERSECTION_CENTER * 2) square. We add a massive 2000px margin 
+        // to handle viewport centering out to arbitrary screen sizes
+        int panelW = INTERSECTION_CENTER_X * 2;
+        int panelH = INTERSECTION_CENTER_Y * 2;
+        return x > panelW + 2000 || x < -2000 || y > panelH + 2000 || y < -2000;
     }
 
     /**

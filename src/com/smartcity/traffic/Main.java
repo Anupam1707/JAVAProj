@@ -22,54 +22,7 @@ import javax.swing.SwingUtilities;
  * @version 1.1
  * @since 2026-02-08
  */
-// Moved to backup. See backup/src/com/smartcity/traffic/Main.java
-
-// public class Main {
-// 
-//     public static void main(String[] args) {
-//         printWelcomeMessage();
-// 
-//         SwingUtilities.invokeLater(() -> {
-//             try {
-//                 javax.swing.UIManager.setLookAndFeel(
-//                         javax.swing.UIManager.getSystemLookAndFeelClassName());
-//             } catch (Exception e) {
-//                 System.err.println("Could not set system look and feel: " + e.getMessage());
-//             }
-// 
-//             TrafficSimulatorGUI gui = new TrafficSimulatorGUI();
-//             gui.setVisible(true);
-// 
-//             System.out.println("\n✓ Smart City Traffic Simulator v1.1 is now running!");
-//             System.out.println("✓ Use the control panel to interact with the simulation.");
-//         });
-//     }
-// 
-//     private static void printWelcomeMessage() {
-//         System.out.println("╔════════════════════════════════════════════════════════════╗");
-//         System.out.println("║    SMART CITY TRAFFIC SIMULATOR v1.1 - OOPS PROJECT       ║");
-//         System.out.println("╠════════════════════════════════════════════════════════════╣");
-//         System.out.println("║                                                            ║");
-//         System.out.println("║  Contributors:                                             ║");
-//         System.out.println("║    • Arjun   : Vehicle Hierarchy & Polymorphism            ║");
-//         System.out.println("║    • Abhinav : Circular Smart Traffic Logic                ║");
-//         System.out.println("║    • Anupam  : GUI & Interactivity                         ║");
-//         System.out.println("║                                                            ║");
-//         System.out.println("║  Key Features:                                             ║");
-//         System.out.println("║    ✓ Fixed 80-second traffic cycle                         ║");
-//         System.out.println("║    ✓ Circular signal rotation (N→E→S→W)                    ║");
-//         System.out.println("║    ✓ Yellow phase between green and red                    ║");
-//         System.out.println("║    ✓ Smart redistribution for empty lanes                  ║");
-//         System.out.println("║    ✓ Emergency override for ambulances                     ║");
-//         System.out.println("║    ✓ Motorcycle vehicle type (speed 5, runs yellow)        ║");
-//         System.out.println("║    ✓ Pause/Resume & simulation speed control               ║");
-//         System.out.println("║    ✓ Per-lane vehicle count display                        ║");
-//         System.out.println("║                                                            ║");
-//         System.out.println("╚════════════════════════════════════════════════════════════╝");
-//         System.out.println("\nInitialising simulation...\n");
-//     }
-// }
-
+public class Main {
     public static void main(String[] args) {
         printWelcomeMessage();
 
