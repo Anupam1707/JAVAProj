@@ -1,5 +1,6 @@
 package com.smartcity.traffic;
 
+import com.smartcity.traffic.Ambulance; // Ensure correct reference for instanceof
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
@@ -120,7 +121,8 @@ public class TrafficSimulatorGUI extends JFrame {
     private void createControlPanel() {
         controlPanel = new JPanel();
         controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
-        controlPanel.setPreferredSize(new Dimension(controlPanelWidth, WINDOW_HEIGHT));
+        // Set a large preferred height to allow scrolling if needed
+        controlPanel.setPreferredSize(new Dimension(controlPanelWidth, Math.max(WINDOW_HEIGHT, 1200)));
         controlPanel.setBackground(new Color(45, 45, 48));
         controlPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
@@ -231,19 +233,29 @@ public class TrafficSimulatorGUI extends JFrame {
 
         spawnTrafficButtons = new JButton[4];
         String[] laneNames = TrafficController.getLaneSequence();
+        // Interchange icons and colors for North<->South and East<->West
+        // Arrows now match the 'From' direction (where vehicles originate)
         String[] icons = { "⬆️", "➡️", "⬇️", "⬅️" };
         Color[] btnColors = {
-                new Color(52, 152, 219),
-                new Color(46, 204, 113),
-                new Color(155, 89, 182),
-                new Color(241, 196, 15)
+            new Color(155, 89, 182), // South (was North)
+            new Color(241, 196, 15), // West (was East)
+            new Color(52, 152, 219), // North (was South)
+            new Color(46, 204, 113)  // East (was West)
         };
 
         for (int i = 0; i < laneNames.length; i++) {
             final String lane = laneNames[i];
-            spawnTrafficButtons[i] = createStyledButton(
-                    icons[i] + " " + lane.charAt(0) + lane.substring(1).toLowerCase(),
-                    btnColors[i]);
+            // Interchange button labels for North<->South and East<->West
+            String displayLane;
+            switch (lane) {
+                case "NORTH": displayLane = "South"; break;
+                case "SOUTH": displayLane = "North"; break;
+                case "EAST":  displayLane = "West";  break;
+                case "WEST":  displayLane = "East";  break;
+                default: displayLane = lane.charAt(0) + lane.substring(1).toLowerCase();
+            }
+            String label = icons[i] + " From " + displayLane;
+            spawnTrafficButtons[i] = createStyledButton(label, btnColors[i]);
             spawnTrafficButtons[i].addActionListener(e -> spawnHeavyTraffic(lane));
             spawnPanel.add(spawnTrafficButtons[i]);
             if (i < 3)
@@ -264,8 +276,9 @@ public class TrafficSimulatorGUI extends JFrame {
         controlPanel.add(emergencyPanel);
 
         JScrollPane scrollPane = new JScrollPane(controlPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setPreferredSize(new Dimension(controlPanelWidth + 30, WINDOW_HEIGHT));
+            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        // Set a minimum viewport height so scroll always works, even in full screen
+        scrollPane.getViewport().setPreferredSize(new Dimension(controlPanelWidth + 30, WINDOW_HEIGHT));
         scrollPane.setBorder(null);
         add(scrollPane, BorderLayout.EAST);
     }
@@ -301,10 +314,18 @@ public class TrafficSimulatorGUI extends JFrame {
 
         for (int i = vehicles.size() - 1; i >= 0; i--) {
             Vehicle vehicle = vehicles.get(i);
-            String signalState = trafficController.getTrafficLight(vehicle.getLaneID()).getCurrentState();
+            String laneID = vehicle.getLaneID();
+            TrafficLight laneLight = trafficController.getTrafficLight(laneID);
+            String signalState = laneLight != null ? laneLight.getCurrentState() : "RED";
+
+            // Only move if the light for this vehicle's lane is GREEN or YELLOW
+            // (Ambulance handles its own logic in move())
             vehicle.move(signalState);
 
             if (vehicle.hasPassedIntersection()) {
+                if (vehicle instanceof Ambulance) {
+                    totalAmbulances--;
+                }
                 vehicles.remove(i);
                 totalVehiclesPassed++;
             }
@@ -451,7 +472,7 @@ public class TrafficSimulatorGUI extends JFrame {
             }
             vehicles.add(vehicle);
         }
-        System.out.println("Spawned " + count + " vehicles on " + laneID + " lane");
+        System.out.println("Spawned " + count + " vehicles to " + laneID + " lane");
     }
 
     /**
@@ -752,10 +773,12 @@ public class TrafficSimulatorGUI extends JFrame {
         private void drawTrafficLights(Graphics2D g2d) {
             int cx = INTERSECTION_SIZE / 2, cy = INTERSECTION_SIZE / 2;
             int offset = 60;
-            drawSingleTrafficLight(g2d, cx - offset, cy - 130, "NORTH");
-            drawSingleTrafficLight(g2d, cx + offset, cy + 130, "SOUTH");
-            drawSingleTrafficLight(g2d, cx + 130, cy - offset, "EAST");
-            drawSingleTrafficLight(g2d, cx - 130, cy + offset, "WEST");
+            // Swap NORTH and SOUTH light positions
+            drawSingleTrafficLight(g2d, cx - offset, cy - 130, "SOUTH"); // Top now controls SOUTH
+            drawSingleTrafficLight(g2d, cx + offset, cy + 130, "NORTH"); // Bottom now controls NORTH
+            // Swap EAST and WEST light positions
+            drawSingleTrafficLight(g2d, cx + 130, cy - offset, "WEST"); // Right now controls WEST
+            drawSingleTrafficLight(g2d, cx - 130, cy + offset, "EAST"); // Left now controls EAST
         }
 
         private void drawSingleTrafficLight(Graphics2D g2d, int x, int y, String laneID) {
@@ -828,7 +851,15 @@ public class TrafficSimulatorGUI extends JFrame {
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Arial", Font.BOLD, 11));
             FontMetrics fm = g2d.getFontMetrics();
-            String label = laneID.substring(0, 1);
+            // Swap the label for N<->S and E<->W
+            String label;
+            switch (laneID) {
+                case "NORTH": label = "S"; break;
+                case "SOUTH": label = "N"; break;
+                case "EAST":  label = "W"; break;
+                case "WEST":  label = "E"; break;
+                default: label = laneID.substring(0, 1);
+            }
             g2d.drawString(label, x - fm.stringWidth(label) / 2, y + 52);
 
             // Countdown timer
