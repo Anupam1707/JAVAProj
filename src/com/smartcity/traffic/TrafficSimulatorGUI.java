@@ -48,7 +48,7 @@ public class TrafficSimulatorGUI extends JFrame {
 
     // ── Statistics ────────────────────────────────────────────────────────────
     private int totalVehiclesPassed;
-    private int totalAmbulances;
+    // Removed totalAmbulances; no longer tracked
 
     // ── Constants ─────────────────────────────────────────────────────────────
     private static final Dimension SCREEN_SIZE = Toolkit.getDefaultToolkit().getScreenSize();
@@ -96,7 +96,6 @@ public class TrafficSimulatorGUI extends JFrame {
         Vehicle.WEST_LANE_OFFSET = 35;
 
         totalVehiclesPassed = 0;
-        totalAmbulances = 0;
 
         setupFrame();
         createControlPanel();
@@ -162,7 +161,8 @@ public class TrafficSimulatorGUI extends JFrame {
         // ── Per-lane counts panel ─────────────────────────────────────────────
         JPanel lanePanel = createStyledPanel("LANE VEHICLES");
         String[] lanes = TrafficController.getLaneSequence();
-        String[] laneIcons = { "⬆ N", "➡ E", "⬇ S", "⬅ W" };
+        // Swap NS and EW for display
+        String[] laneIcons = { "⬇ S", "⬅ W", "⬆ N", "➡ E" };
         laneCountLabels = new JLabel[lanes.length];
         for (int i = 0; i < lanes.length; i++) {
             laneCountLabels[i] = createStyledLabel(laneIcons[i] + ": 0", new Color(180, 220, 255));
@@ -323,9 +323,6 @@ public class TrafficSimulatorGUI extends JFrame {
             vehicle.move(signalState);
 
             if (vehicle.hasPassedIntersection()) {
-                if (vehicle instanceof Ambulance) {
-                    totalAmbulances--;
-                }
                 vehicles.remove(i);
                 totalVehiclesPassed++;
             }
@@ -393,8 +390,7 @@ public class TrafficSimulatorGUI extends JFrame {
         }
 
         // Emergency stats
-        emergencyLabel.setText("🚨 Overrides: " + trafficController.getEmergencyOverrideCount()
-                + " | 🚑: " + totalAmbulances);
+        emergencyLabel.setText("🚨 Overrides: " + trafficController.getEmergencyOverrideCount());
     }
 
     // ── Button actions ────────────────────────────────────────────────────────
@@ -525,7 +521,6 @@ public class TrafficSimulatorGUI extends JFrame {
                 return;
         }
         vehicles.add(ambulance);
-        totalAmbulances++;
         System.out.println("🚑 Ambulance spawned on " + randomLane + " lane!");
     }
 
