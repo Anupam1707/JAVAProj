@@ -1,9 +1,9 @@
 package com.smartcity.traffic;
 
-import com.smartcity.traffic.Ambulance; // Ensure correct reference for instanceof
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.Random;
 
 /**
@@ -23,7 +23,10 @@ public class TrafficSimulatorGUI extends JFrame {
 
     // ── GUI Components ────────────────────────────────────────────────────────
     private IntersectionPanel intersectionPanel;
-    private JPanel controlPanel;
+    private JPanel northWestControls;
+    private JPanel northEastControls;
+    private JPanel southWestControls;
+    private JPanel southEastControls;
     private JLabel currentLightLabel;
     private JLabel cycleTimerLabel;
     private JLabel smartModeLabel;
@@ -118,24 +121,17 @@ public class TrafficSimulatorGUI extends JFrame {
     // ── Control panel ─────────────────────────────────────────────────────────
 
     private void createControlPanel() {
-        controlPanel = new JPanel();
-        controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
-        // Set a large preferred height to allow scrolling if needed
-        controlPanel.setPreferredSize(new Dimension(controlPanelWidth, Math.max(WINDOW_HEIGHT, 1200)));
-        controlPanel.setBackground(new Color(45, 45, 48));
-        controlPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        int overlayWidth = controlPanelWidth;
 
         // Title
         JPanel titlePanel = new JPanel(new BorderLayout());
         titlePanel.setBackground(new Color(30, 30, 33));
         titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        titlePanel.setMaximumSize(new Dimension(controlPanelWidth, 60));
+        titlePanel.setMaximumSize(new Dimension(overlayWidth, 60));
         JLabel titleLabel = new JLabel("🚦 TRAFFIC CONTROL", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
         titleLabel.setForeground(new Color(100, 200, 255));
         titlePanel.add(titleLabel);
-        controlPanel.add(titlePanel);
-        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // ── Status panel ──────────────────────────────────────────────────────
         JPanel statusPanel = createStyledPanel("STATUS");
@@ -155,9 +151,6 @@ public class TrafficSimulatorGUI extends JFrame {
         timeBankLabel = createStyledLabel("💰 Time Bank: 0s", new Color(255, 215, 0));
         statusPanel.add(timeBankLabel);
 
-        controlPanel.add(statusPanel);
-        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-
         // ── Per-lane counts panel ─────────────────────────────────────────────
         JPanel lanePanel = createStyledPanel("LANE VEHICLES");
         String[] lanes = TrafficController.getLaneSequence();
@@ -168,8 +161,6 @@ public class TrafficSimulatorGUI extends JFrame {
             laneCountLabels[i] = createStyledLabel(laneIcons[i] + ": 0", new Color(180, 220, 255));
             lanePanel.add(laneCountLabels[i]);
         }
-        controlPanel.add(lanePanel);
-        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // ── Statistics panel ──────────────────────────────────────────────────
         JPanel statisticsPanel = createStyledPanel("STATISTICS");
@@ -180,11 +171,8 @@ public class TrafficSimulatorGUI extends JFrame {
         densityLabel = createStyledLabel("Density: Low", new Color(200, 200, 200));
         statisticsPanel.add(densityLabel);
 
-        emergencyLabel = createStyledLabel("🚨 Overrides: 0 | 🚑: 0", new Color(255, 150, 150));
+        emergencyLabel = createStyledLabel("🚨 Overrides: 0", new Color(255, 150, 150));
         statisticsPanel.add(emergencyLabel);
-
-        controlPanel.add(statisticsPanel);
-        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // ── Controls panel ────────────────────────────────────────────────────
         JPanel controlsPanel = createStyledPanel("CONTROLS");
@@ -213,20 +201,24 @@ public class TrafficSimulatorGUI extends JFrame {
         speedSlider.setSnapToTicks(true);
         speedSlider.setBackground(new Color(30, 30, 33));
         speedSlider.setForeground(new Color(200, 200, 200));
-        speedSlider.setMaximumSize(new Dimension((int) (controlPanelWidth * 0.9), 40));
+        speedSlider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         speedSlider.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel[] speedLabels = {
                 new JLabel("0.5×"), new JLabel("1×"), new JLabel("2×"), new JLabel("4×")
         };
+        Hashtable<Integer, JLabel> speedLabelTable = new Hashtable<>();
         for (JLabel sl : speedLabels) {
             sl.setForeground(new Color(150, 150, 150));
             sl.setFont(new Font("Arial", Font.PLAIN, 9));
         }
+        speedLabelTable.put(1, speedLabels[0]);
+        speedLabelTable.put(2, speedLabels[1]);
+        speedLabelTable.put(3, speedLabels[2]);
+        speedLabelTable.put(4, speedLabels[3]);
+        speedSlider.setLabelTable(speedLabelTable);
+        speedSlider.setPaintLabels(true);
         speedSlider.addChangeListener(e -> applySpeedSetting(speedSlider.getValue()));
         controlsPanel.add(speedSlider);
-
-        controlPanel.add(controlsPanel);
-        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // ── Spawn panel ───────────────────────────────────────────────────────
         JPanel spawnPanel = createStyledPanel("SPAWN VEHICLES");
@@ -262,9 +254,6 @@ public class TrafficSimulatorGUI extends JFrame {
                 spawnPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         }
 
-        controlPanel.add(spawnPanel);
-        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-
         // ── Emergency panel ───────────────────────────────────────────────────
         JPanel emergencyPanel = createStyledPanel("EMERGENCY");
 
@@ -273,14 +262,37 @@ public class TrafficSimulatorGUI extends JFrame {
         spawnAmbulanceButton.addActionListener(e -> spawnAmbulance());
         emergencyPanel.add(spawnAmbulanceButton);
 
-        controlPanel.add(emergencyPanel);
+        // ── Legend panel (moved into NW control box for visual uniformity) ──
+        JPanel legendPanel = createStyledPanel("LEGEND");
+        legendPanel.add(createLegendItem("Private Car", "CAR"));
+        legendPanel.add(createLegendItem("Public Bus", "BUS"));
+        legendPanel.add(createLegendItem("Motorcycle", "MOTORCYCLE"));
+        legendPanel.add(createLegendItem("Ambulance", "AMBULANCE"));
 
-        JScrollPane scrollPane = new JScrollPane(controlPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        // Set a minimum viewport height so scroll always works, even in full screen
-        scrollPane.getViewport().setPreferredSize(new Dimension(controlPanelWidth + 30, WINDOW_HEIGHT));
-        scrollPane.setBorder(null);
-        add(scrollPane, BorderLayout.EAST);
+        // Scatter controls across four grass quadrants.
+        northWestControls = createQuadrantContainer();
+        northWestControls.setLayout(new BorderLayout(0, 10));
+        northWestControls.add(titlePanel, BorderLayout.NORTH);
+        JPanel northWestContent = new JPanel();
+        northWestContent.setOpaque(false);
+        northWestContent.setLayout(new BoxLayout(northWestContent, BoxLayout.Y_AXIS));
+        northWestContent.add(legendPanel);
+        northWestContent.add(Box.createRigidArea(new Dimension(0, 10)));
+        northWestContent.add(statusPanel);
+        northWestControls.add(northWestContent, BorderLayout.CENTER);
+
+        northEastControls = createQuadrantContainer();
+        northEastControls.add(lanePanel);
+        northEastControls.add(Box.createRigidArea(new Dimension(0, 10)));
+        northEastControls.add(statisticsPanel);
+
+        southWestControls = createQuadrantContainer();
+        southWestControls.add(controlsPanel);
+
+        southEastControls = createQuadrantContainer();
+        southEastControls.add(spawnPanel);
+        southEastControls.add(Box.createRigidArea(new Dimension(0, 10)));
+        southEastControls.add(emergencyPanel);
     }
 
     // ── Intersection panel ────────────────────────────────────────────────────
@@ -288,6 +300,65 @@ public class TrafficSimulatorGUI extends JFrame {
     private void createIntersectionPanel() {
         intersectionPanel = new IntersectionPanel();
         add(intersectionPanel, BorderLayout.CENTER);
+
+        if (northWestControls != null) {
+            intersectionPanel.add(northWestControls);
+            intersectionPanel.add(northEastControls);
+            intersectionPanel.add(southWestControls);
+            intersectionPanel.add(southEastControls);
+            SwingUtilities.invokeLater(this::updateQuadrantControlBounds);
+        }
+    }
+
+    private void updateQuadrantControlBounds() {
+        if (intersectionPanel == null || northWestControls == null)
+            return;
+
+        int panelW = intersectionPanel.getWidth();
+        int panelH = intersectionPanel.getHeight();
+        int cx = panelW / 2;
+        int cy = panelH / 2;
+        int margin = 16;
+        int centerClearance = ROAD_HALF_WIDTH + 50;
+
+        int leftX = margin;
+        int rightX = cx + centerClearance + margin;
+        int topY = margin;
+        int bottomY = cy + centerClearance + margin;
+
+        int leftW = (cx - centerClearance) - (2 * margin);
+        int rightW = panelW - rightX - margin;
+        int topH = (cy - centerClearance) - (2 * margin);
+        int bottomH = panelH - bottomY - margin;
+
+        if (leftW <= 0 || rightW <= 0 || topH <= 0 || bottomH <= 0)
+            return;
+
+        // NW box starts at top for consistent block alignment with other quadrants.
+        int nwY = topY;
+        // Stretch NW panel down to just above the horizontal road with padding.
+        int roadTopY = cy - ROAD_HALF_WIDTH;
+        int nwBottomPadding = 12;
+        int nwBottom = roadTopY - nwBottomPadding;
+        int nwH = nwBottom - nwY;
+        if (nwH <= 80) {
+            nwY = topY;
+            nwH = topH;
+        }
+
+        northWestControls.setBounds(leftX, nwY, leftW, nwH);
+        northEastControls.setBounds(rightX, topY, rightW, topH);
+        southWestControls.setBounds(leftX, bottomY, leftW, bottomH);
+
+        // Keep the SE box closer to the road and taller for spawn/emergency controls.
+        int seTopPaddingFromRoad = 8;
+        int seTopY = cy + ROAD_HALF_WIDTH + seTopPaddingFromRoad;
+        int seHeight = panelH - seTopY - margin;
+        if (seHeight <= 80) {
+            southEastControls.setBounds(rightX, bottomY, rightW, bottomH);
+        } else {
+            southEastControls.setBounds(rightX, seTopY, rightW, seHeight);
+        }
     }
 
     // ── Simulation timers ─────────────────────────────────────────────────────
@@ -554,7 +625,7 @@ public class TrafficSimulatorGUI extends JFrame {
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(80, 80, 85), 1),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)));
-        panel.setMaximumSize(new Dimension(controlPanelWidth, 500));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 500));
 
         JLabel titleLabel = new JLabel(title);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 11));
@@ -574,15 +645,112 @@ public class TrafficSimulatorGUI extends JFrame {
         return label;
     }
 
+    private JPanel createLegendItem(String text, String type) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 1));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel iconLabel = new JLabel(createLegendVehicleIcon(type));
+        JLabel textLabel = new JLabel(text);
+        textLabel.setFont(new Font("Consolas", Font.PLAIN, 12));
+        textLabel.setForeground(new Color(220, 220, 220));
+
+        row.add(iconLabel);
+        row.add(textLabel);
+        return row;
+    }
+
+    private Icon createLegendVehicleIcon(final String type) {
+        return new Icon() {
+            @Override
+            public int getIconWidth() {
+                return 24;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 14;
+            }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                switch (type) {
+                    case "CAR": {
+                        Color carColor = new Color(100, 150, 200);
+                        g2.setColor(carColor);
+                        g2.fillRoundRect(x + 2, y + 4, 20, 8, 4, 4);
+                        g2.setColor(new Color(160, 200, 240));
+                        g2.fillRoundRect(x + 5, y + 5, 8, 3, 2, 2);
+                        g2.setColor(carColor.darker());
+                        g2.drawRoundRect(x + 2, y + 4, 20, 8, 4, 4);
+                        break;
+                    }
+                    case "BUS": {
+                        Color busColor = new Color(255, 165, 0);
+                        g2.setColor(busColor);
+                        g2.fillRoundRect(x + 1, y + 3, 22, 9, 3, 3);
+                        g2.setColor(new Color(180, 220, 255));
+                        g2.fillRect(x + 4, y + 5, 5, 3);
+                        g2.fillRect(x + 10, y + 5, 5, 3);
+                        g2.fillRect(x + 16, y + 5, 4, 3);
+                        g2.setColor(busColor.darker());
+                        g2.drawRoundRect(x + 1, y + 3, 22, 9, 3, 3);
+                        break;
+                    }
+                    case "MOTORCYCLE": {
+                        Color motoColor = new Color(255, 220, 50);
+                        g2.setColor(Color.BLACK);
+                        g2.fillOval(x + 4, y + 8, 4, 4);
+                        g2.fillOval(x + 16, y + 8, 4, 4);
+                        g2.setColor(motoColor);
+                        g2.fillRoundRect(x + 6, y + 6, 12, 4, 3, 3);
+                        g2.setColor(new Color(70, 70, 70));
+                        g2.fillOval(x + 10, y + 3, 4, 3);
+                        g2.setColor(motoColor.darker());
+                        g2.drawRoundRect(x + 6, y + 6, 12, 4, 3, 3);
+                        break;
+                    }
+                    case "AMBULANCE": {
+                        Color ambColor = new Color(230, 70, 70);
+                        g2.setColor(Color.WHITE);
+                        g2.fillRoundRect(x + 1, y + 3, 22, 9, 3, 3);
+                        g2.setColor(ambColor);
+                        g2.fillRect(x + 1, y + 6, 22, 3);
+                        g2.setStroke(new BasicStroke(2f));
+                        g2.drawLine(x + 9, y + 7, x + 15, y + 7);
+                        g2.drawLine(x + 12, y + 4, x + 12, y + 10);
+                        g2.setColor(new Color(200, 200, 200));
+                        g2.setStroke(new BasicStroke(1f));
+                        g2.drawRoundRect(x + 1, y + 3, 22, 9, 3, 3);
+                        break;
+                    }
+                    default:
+                        g2.setColor(new Color(180, 180, 180));
+                        g2.fillRect(x + 4, y + 4, 14, 6);
+                        break;
+                }
+
+                g2.dispose();
+            }
+        };
+    }
+
     private JButton createStyledButton(String text, Color color) {
         JButton button = new JButton(text);
         button.setFont(new Font("Arial", Font.BOLD, 11));
         button.setBackground(color);
         button.setForeground(Color.WHITE);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
+        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.setMargin(new Insets(6, 12, 6, 12));
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setMaximumSize(new Dimension((int) (controlPanelWidth * 0.9), 35));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
@@ -596,6 +764,15 @@ public class TrafficSimulatorGUI extends JFrame {
         return button;
     }
 
+    private JPanel createQuadrantContainer() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(new Color(45, 45, 48, 220));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        panel.setOpaque(true);
+        return panel;
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // Inner class: IntersectionPanel
     // ═════════════════════════════════════════════════════════════════════════
@@ -603,9 +780,17 @@ public class TrafficSimulatorGUI extends JFrame {
     private class IntersectionPanel extends JPanel {
 
         public IntersectionPanel() {
+            setLayout(null);
             setPreferredSize(new Dimension(INTERSECTION_SIZE, INTERSECTION_SIZE));
             setMinimumSize(new Dimension(400, 400));
             setBackground(new Color(40, 167, 69)); // grass green
+
+            addComponentListener(new java.awt.event.ComponentAdapter() {
+                @Override
+                public void componentResized(java.awt.event.ComponentEvent e) {
+                    updateQuadrantControlBounds();
+                }
+            });
         }
 
         @Override
@@ -630,7 +815,6 @@ public class TrafficSimulatorGUI extends JFrame {
             // Revert translation for absolute UI overlays
             g2d.translate(-xOffset, -yOffset);
 
-            drawLegend(g2d);
             drawPauseOverlay(g2d);
         }
 
@@ -859,10 +1043,19 @@ public class TrafficSimulatorGUI extends JFrame {
 
             // Countdown timer
             if ("GREEN".equals(state) || "YELLOW".equals(state)) {
-                g2d.setFont(new Font("Arial", Font.BOLD, 10));
+                Font timerFont = new Font("Arial", Font.BOLD, 10);
+                g2d.setFont(timerFont);
+                FontMetrics timerFm = g2d.getFontMetrics(timerFont);
                 String timer = String.valueOf(timeRemaining);
-                g2d.setColor(new Color(255, 255, 255, 200));
-                g2d.drawString(timer, x - fm.stringWidth(timer) / 2 + 1, y + 68);
+                int tx = x - timerFm.stringWidth(timer) / 2;
+                int ty = y + 68;
+
+                g2d.setColor(new Color(0, 0, 0, 140));
+                g2d.fillRoundRect(tx - 4, ty - timerFm.getAscent(),
+                        timerFm.stringWidth(timer) + 8, timerFm.getHeight(), 8, 8);
+
+                g2d.setColor(new Color(255, 255, 255, 220));
+                g2d.drawString(timer, tx, ty);
             }
         }
 
@@ -1018,76 +1211,6 @@ public class TrafficSimulatorGUI extends JFrame {
             // Emergency lights (alternating red/blue)
             g2d.setColor(System.currentTimeMillis() % 500 < 250 ? Color.RED : Color.BLUE);
             g2d.fillOval(x - 3, y - 13, 6, 6);
-            g2d.setStroke(new BasicStroke(1));
-        }
-
-        // ── Legend ────────────────────────────────────────────────────────────
-
-        private void drawLegend(Graphics2D g2d) {
-            g2d.setColor(new Color(0, 0, 0, 80));
-            g2d.fillRoundRect(12, 12, 156, 118, 12, 12);
-            g2d.setColor(new Color(255, 255, 255, 240));
-            g2d.fillRoundRect(10, 10, 156, 118, 12, 12);
-            g2d.setColor(new Color(100, 100, 100));
-            g2d.setStroke(new BasicStroke(2));
-            g2d.drawRoundRect(10, 10, 156, 118, 12, 12);
-
-            g2d.setColor(Color.BLACK);
-            g2d.setFont(new Font("Arial", Font.BOLD, 13));
-            g2d.drawString("📊 Legend", 20, 30);
-            g2d.setFont(new Font("Arial", Font.PLAIN, 11));
-
-            int sy = 45;
-            drawMiniCar(g2d, 28, sy, new Color(100, 150, 200));
-            g2d.setColor(Color.BLACK);
-            g2d.drawString("Private Car", 45, sy + 5);
-
-            drawMiniBus(g2d, 28, sy + 22, new Color(255, 165, 0));
-            g2d.setColor(Color.BLACK);
-            g2d.drawString("Public Bus", 45, sy + 27);
-
-            drawMiniMotorcycle(g2d, 28, sy + 44, new Color(255, 220, 50));
-            g2d.setColor(Color.BLACK);
-            g2d.drawString("Motorcycle", 45, sy + 49);
-
-            drawMiniAmbulance(g2d, 28, sy + 66, Color.RED);
-            g2d.setColor(Color.BLACK);
-            g2d.drawString("Ambulance", 45, sy + 71);
-
-            g2d.setStroke(new BasicStroke(1));
-        }
-
-        private void drawMiniCar(Graphics2D g2d, int x, int y, Color color) {
-            g2d.setColor(color);
-            g2d.fillRoundRect(x - 8, y - 4, 16, 8, 3, 3);
-            g2d.setColor(color.darker());
-            g2d.drawRoundRect(x - 8, y - 4, 16, 8, 3, 3);
-        }
-
-        private void drawMiniBus(Graphics2D g2d, int x, int y, Color color) {
-            g2d.setColor(color);
-            g2d.fillRoundRect(x - 10, y - 5, 20, 10, 3, 3);
-            g2d.setColor(color.darker());
-            g2d.drawRoundRect(x - 10, y - 5, 20, 10, 3, 3);
-        }
-
-        private void drawMiniMotorcycle(Graphics2D g2d, int x, int y, Color color) {
-            g2d.setColor(color);
-            g2d.fillRoundRect(x - 7, y - 3, 14, 6, 3, 3);
-            g2d.setColor(new Color(50, 50, 50));
-            g2d.fillOval(x - 1, y - 5, 5, 4); // helmet
-            g2d.setColor(color.darker());
-            g2d.drawRoundRect(x - 7, y - 3, 14, 6, 3, 3);
-        }
-
-        private void drawMiniAmbulance(Graphics2D g2d, int x, int y, Color color) {
-            g2d.setColor(Color.WHITE);
-            g2d.fillRoundRect(x - 9, y - 5, 18, 10, 3, 3);
-            g2d.setColor(color);
-            g2d.fillRect(x - 9, y - 1, 18, 3);
-            g2d.setStroke(new BasicStroke(2));
-            g2d.drawLine(x - 3, y, x + 3, y);
-            g2d.drawLine(x, y - 3, x, y + 3);
             g2d.setStroke(new BasicStroke(1));
         }
 

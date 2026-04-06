@@ -18,6 +18,7 @@ import java.util.Map;
 public class TrafficController {
     private static final int TOTAL_CYCLE_TIME = 80; // Fixed cycle time in seconds
     private static final int DEFAULT_GREEN_TIME = 20; // Default 20 seconds per lane (80/4)
+    private static final int TIME_BANK_RESET_SECONDS = 1000; // Expire bank after 1000s
     private static final String[] LANE_SEQUENCE = { "NORTH", "EAST", "SOUTH", "WEST" };
 
     private Map<String, TrafficLight> trafficLights;
@@ -25,6 +26,7 @@ public class TrafficController {
     private boolean smartModeEnabled;
     private int cycleTimeElapsed;
     private int savedTimeBank; // Accumulated time saved from empty lanes
+    private int timeBankAgeSeconds; // How long current bank has existed
 
     private ArrayList<Vehicle> vehicles;
 
@@ -43,6 +45,7 @@ public class TrafficController {
         this.smartModeEnabled = true;
         this.cycleTimeElapsed = 0;
         this.savedTimeBank = 0;
+        this.timeBankAgeSeconds = 0;
         this.vehicles = new ArrayList<>();
 
         // Initialise traffic lights for each lane
@@ -96,6 +99,8 @@ public class TrafficController {
             cycleTimeElapsed = 0;
         }
 
+        updateTimeBankExpiry();
+
         TrafficLight currentLight = trafficLights.get(getCurrentLane());
 
         // 1. Tick the current light first
@@ -120,6 +125,21 @@ public class TrafficController {
         // 5. Smart redistribution (only during green phase)
         if (currentLight.isGreen() && smartModeEnabled) {
             checkSmartRedistribution();
+        }
+    }
+
+    /** Reset the time bank if it has existed for too long. */
+    private void updateTimeBankExpiry() {
+        if (savedTimeBank <= 0) {
+            timeBankAgeSeconds = 0;
+            return;
+        }
+
+        timeBankAgeSeconds++;
+        if (timeBankAgeSeconds >= TIME_BANK_RESET_SECONDS) {
+            System.out.println("⌛ Time Bank Expired: Resetting after " + TIME_BANK_RESET_SECONDS + "s");
+            savedTimeBank = 0;
+            timeBankAgeSeconds = 0;
         }
     }
 
