@@ -157,11 +157,11 @@ public abstract class Vehicle {
      * @return true if vehicle has left the visible area
      */
     public boolean hasPassedIntersection() {
-        // Panel is (INTERSECTION_CENTER * 2) square. We add a massive 2000px margin 
+        // Panel is (INTERSECTION_CENTER * 2) square. We add a massive 500px margin 
         // to handle viewport centering out to arbitrary screen sizes
         int panelW = INTERSECTION_CENTER_X * 2;
         int panelH = INTERSECTION_CENTER_Y * 2;
-        return x > panelW + 2000 || x < -2000 || y > panelH + 2000 || y < -2000;
+        return x > panelW + 50 || x < -50 || y > panelH + 50 || y < -50;
     }
 
     /**
