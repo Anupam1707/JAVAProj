@@ -14,6 +14,9 @@ on:
 permissions:
   contents: write
 
+env:
+  APP_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && replace(github.ref_name, 'v', '') || '1.1' }}
+
 jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -51,7 +54,7 @@ jobs:
           jpackage \
             --type dmg \
             --name "SmartCityTraffic" \
-            --app-version "1.1" \
+            --app-version "$APP_VERSION" \
             --vendor "OOPS Project" \
             --description "Smart City Traffic Simulator" \
             --input . \
@@ -123,7 +126,7 @@ jobs:
           jpackage `
             --type exe `
             --name "SmartCityTraffic" `
-            --app-version "1.1" `
+            --app-version "$env:APP_VERSION" `
             --vendor "OOPS Project" `
             --description "Smart City Traffic Simulator" `
             --input . `
@@ -181,7 +184,7 @@ jobs:
           jpackage \
             --type deb \
             --name "smartcitytraffic" \
-            --app-version "1.1" \
+            --app-version "$APP_VERSION" \
             --vendor "OOPS Project" \
             --description "Smart City Traffic Simulator" \
             --input . \
@@ -197,7 +200,7 @@ jobs:
           jpackage \
             --type rpm \
             --name "smartcitytraffic" \
-            --app-version "1.1" \
+            --app-version "$APP_VERSION" \
             --vendor "OOPS Project" \
             --description "Smart City Traffic Simulator" \
             --input . \
@@ -260,10 +263,10 @@ jobs:
             ### Downloads
             | Platform | Installer |
             |----------|-----------|
-            | 🍎 macOS | `SmartCityTraffic-1.1.dmg` |
-            | 🪟 Windows | `SmartCityTraffic-1.1.exe` |
-            | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_1.1-1_amd64.deb` |
-            | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-1.1-1.x86_64.rpm` |
+            | 🍎 macOS | `SmartCityTraffic-${{ env.APP_VERSION }}.dmg` |
+            | 🪟 Windows | `SmartCityTraffic-${{ env.APP_VERSION }}.exe` |
+            | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_${{ env.APP_VERSION }}-1_amd64.deb` |
+            | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-${{ env.APP_VERSION }}-1.x86_64.rpm` |
 
             > **No Java required** — all installers bundle their own JRE.
 
