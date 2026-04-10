@@ -154,10 +154,10 @@ jobs:
           New-Item -ItemType Directory -Force -Path package-input | Out-Null
           Copy-Item -Path SmartCityTraffic.jar -Destination package-input
 
-      - name: Convert logo to ICO (Linux)
+      - name: Convert logo to PNG (Linux)
         if: runner.os == 'Linux'
         run: |
-          convert logo.jpeg -resize 256x256 package-input/logo.ico
+          convert logo.jpeg -resize 256x256 package-input/logo.png
 
       - name: Convert logo to ICNS (macOS)
         if: runner.os == 'macOS'
@@ -236,7 +236,7 @@ jobs:
             --input package-input \
             --main-jar SmartCityTraffic.jar \
             --main-class com.smartcity.traffic.Main \
-            --icon package-input/logo.ico \
+            --icon package-input/logo.png \
             --dest dist \
             --java-options "-Xmx512m" \
             --linux-shortcut \
@@ -251,7 +251,7 @@ jobs:
             --input package-input \
             --main-jar SmartCityTraffic.jar \
             --main-class com.smartcity.traffic.Main \
-            --icon package-input/logo.ico \
+            --icon package-input/logo.png \
             --dest dist \
             --java-options "-Xmx512m" \
             --linux-shortcut \
