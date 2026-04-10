@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart City Traffic Simulator — Download</title>
+  <meta name="description" content="Download Smart City Traffic Simulator — a Java Swing application demonstrating smart traffic control with adaptive signals, emergency overrides, and real-time statistics." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── Design Tokens ─── */
+    :root {
+      --bg:           #09090f;
+      --bg-card:      rgba(255,255,255,0.04);
+      --bg-card-h:    rgba(255,255,255,0.07);
+      --border:       rgba(255,255,255,0.08);
+      --border-h:     rgba(255,255,255,0.18);
+      --text:         #e8eaf0;
+      --text-muted:   #7a7f9a;
+      --accent:       #4f8ef7;
+      --accent-2:     #7c5cfc;
+      --green:        #3ecf8e;
+      --amber:        #f59e0b;
+      --red:          #f44f4f;
+      --radius:       16px;
+      --radius-sm:    8px;
+      --glow-accent:  rgba(79,142,247,0.35);
+      --glow-purple:  rgba(124,92,252,0.25);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Animated background ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(79,142,247,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 110%, rgba(124,92,252,0.10) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Grid overlay ─── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main { position: relative; z-index: 1; }
+
+    /* ─── Nav ─── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9,9,15,0.6);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.3); opacity: 0.7; }
+    }
+
+    .nav-github {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .nav-github:hover {
+      color: var(--text);
+      border-color: var(--border-h);
+      background: var(--bg-card-h);
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      text-align: center;
+      padding: 100px 20px 60px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid rgba(79,142,247,0.3);
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      background: rgba(79,142,247,0.08);
+      margin-bottom: 28px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 0%, #a0aec0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 560px;
+      margin: 0 auto 52px;
+    }
+
+    /* ─── Version badge ─── */
+    #version-tag {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: rgba(124,92,252,0.15);
+      border: 1px solid rgba(124,92,252,0.3);
+      color: #b39dff;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ─── Download cards ─── */
+    .downloads-section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 20px 100px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .dl-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .dl-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.25s;
+      border-radius: var(--radius);
+    }
+
+    .dl-card.mac::before    { background: radial-gradient(ellipse at top left, rgba(79,142,247,0.08), transparent 70%); }
+    .dl-card.win::before    { background: radial-gradient(ellipse at top left, rgba(0,163,219,0.08), transparent 70%); }
+    .dl-card.deb::before    { background: radial-gradient(ellipse at top left, rgba(234,84,85,0.08), transparent 70%); }
+    .dl-card.rpm::before    { background: radial-gradient(ellipse at top left, rgba(62,207,142,0.08), transparent 70%); }
+
+    .dl-card:hover { border-color: var(--border-h); background: var(--bg-card-h); transform: translateY(-3px); }
+    .dl-card:hover::before { opacity: 1; }
+
+    .dl-icon {
+      font-size: 2.2rem;
+      line-height: 1;
+    }
+
+    .dl-platform {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .dl-ext {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .dl-filename {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      flex-grow: 1;
+    }
+
+    .dl-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      transition: filter 0.2s;
+      width: 100%;
+    }
+
+    .dl-card.mac  .dl-btn { background: linear-gradient(135deg, #4f8ef7, #7c5cfc); color: #fff; }
+    .dl-card.win  .dl-btn { background: linear-gradient(135deg, #00a3db, #0066cc); color: #fff; }
+    .dl-card.deb  .dl-btn { background: linear-gradient(135deg, #ea5454, #c02f2f); color: #fff; }
+    .dl-card.rpm  .dl-btn { background: linear-gradient(135deg, #3ecf8e, #1a9962); color: #fff; }
+
+    .dl-card:hover .dl-btn { filter: brightness(1.1); }
+
+    .dl-size {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    /* ─── Loading state ─── */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(79,142,247,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Error state ─── */
+    .error-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .error-state .err-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .error-state p { margin-bottom: 8px; }
+    .error-state a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .error-state a:hover { text-decoration: underline; }
+
+    /* ─── Features strip ─── */
+    .features {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 20px;
+      margin-bottom: 80px;
+    }
+
+    .features-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 32px;
+      text-align: center;
+    }
+
+    .feature-item .feat-icon {
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+    }
+
+    .feature-item h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .feature-item p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ─── No Java notice ─── */
+    .notice {
+      max-width: 680px;
+      margin: 0 auto 80px;
+      padding: 18px 24px;
+      background: rgba(62,207,142,0.07);
+      border: 1px solid rgba(62,207,142,0.2);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .notice .icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+    .notice p { font-size: 0.85rem; color: #a8f0ce; line-height: 1.6; }
+    .notice strong { color: var(--green); }
+
+    /* ─── Footer ─── */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ─── Animations ─── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.6s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-up:nth-child(1) { animation-delay: 0.1s; }
+    .fade-up:nth-child(2) { animation-delay: 0.2s; }
+    .fade-up:nth-child(3) { animation-delay: 0.3s; }
+    .fade-up:nth-child(4) { animation-delay: 0.4s; }
+
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      .hero { padding: 70px 16px 40px; }
+      .download-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-logo">
+      <span class="dot"></span>
+      Smart City Traffic
+    </a>
+    <a href="https://github.com/Anupam1707/JAVAProj" target="_blank" rel="noopener" class="nav-github">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      View on GitHub
+    </a>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="badge"><span class="badge-dot"></span> Open Source · Java Swing</div>
+    <h1>Smart City<br /><span>Traffic Simulator</span></h1>
+    <p class="hero-sub">
+      A 4-way adaptive intersection simulator with real-time signals, emergency
+      vehicle overrides, and live lane statistics — bundled as a native app.
+    </p>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="features-inner">
+      <div class="feature-item">
+        <div class="feat-icon">🚦</div>
+        <h3>Adaptive Signals</h3>
+        <p>Smart mode adjusts green/red cycles based on live queue depth.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feat-icon">🚑</div>
+        <h3>Emergency Override</h3>
+        <p>Ambulances instantly preempt all signals and clear the lane.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feat-icon">📊</div>
+        <h3>Real-time Stats</h3>
+        <p>Per-lane vehicle counts and live log viewer built right in.</p>
+      </div>
+      <div class="feature-item">
+        <div class="feat-icon">📦</div>
+        <h3>Native Installer</h3>
+        <p>No Java install needed — JRE is bundled inside each package.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Notice -->
+  <div class="notice" style="max-width:860px;margin:0 auto 56px;padding-left:40px;">
+    <span class="icon">✅</span>
+    <p>
+      <strong>No Java required.</strong> Every installer below bundles its own Java runtime.
+      Just download, install, and run — nothing else to set up.
+    </p>
+  </div>
+
+  <!-- Downloads -->
+  <section class="downloads-section">
+    <p class="section-title" id="release-label">Downloads — Latest Release</p>
+    <div id="download-area">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <span>Fetching latest release…</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  Built with ☕ Java · Released under an Educational License ·
+  <a href="https://github.com/Anupam1707/JAVAProj/releases" target="_blank" rel="noopener">All Releases</a>
+</footer>
+
+<script>
+  const REPO = 'Anupam1707/JAVAProj';
+  const API  = `https://api.github.com/repos/${REPO}/releases/latest`;
+
+  // Maps a release asset filename → { platform, class, icon, ext }
+  function classifyAsset(name) {
+    const n = name.toLowerCase();
+    if (n.endsWith('.dmg'))                       return { platform: 'macOS',            cls: 'mac', icon: '🍎', ext: '.dmg' };
+    if (n.endsWith('.exe'))                       return { platform: 'Windows',           cls: 'win', icon: '🪟', ext: '.exe' };
+    if (n.endsWith('.deb'))                       return { platform: 'Linux (Debian/Ubuntu)', cls: 'deb', icon: '🐧', ext: '.deb' };
+    if (n.endsWith('.rpm'))                       return { platform: 'Linux (Fedora/RHEL)',   cls: 'rpm', icon: '🐧', ext: '.rpm' };
+    return null;
+  }
+
+  function fmtSize(bytes) {
+    if (!bytes) return '';
+    if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+    return `${(bytes / 1024).toFixed(0)} KB`;
+  }
+
+  function renderCards(assets, version) {
+    const area  = document.getElementById('download-area');
+    const label = document.getElementById('release-label');
+    label.innerHTML = `Downloads — Latest Release <span id="version-tag">${version}</span>`;
+
+    const filtered = assets
+      .map(a => ({ ...a, meta: classifyAsset(a.name) }))
+      .filter(a => a.meta !== null);
+
+    if (filtered.length === 0) {
+      area.innerHTML = `
+        <div class="error-state">
+          <div class="err-icon">🗂️</div>
+          <p>No installer files found in the latest release.</p>
+          <p><a href="https://github.com/${REPO}/releases" target="_blank" rel="noopener">Browse all releases →</a></p>
+        </div>`;
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'download-grid';
+
+    filtered.forEach((asset, i) => {
+      const { platform, cls, icon, ext } = asset.meta;
+      const card = document.createElement('a');
+      card.href      = asset.browser_download_url;
+      card.className = `dl-card ${cls} fade-up`;
+      card.style.animationDelay = `${0.1 + i * 0.08}s`;
+      card.setAttribute('aria-label', `Download for ${platform}`);
+      card.innerHTML = `
+        <div class="dl-icon">${icon}</div>
+        <div>
+          <div class="dl-platform">${platform}</div>
+          <div class="dl-ext">${ext} installer</div>
+        </div>
+        <div class="dl-filename">${asset.name}</div>
+        <div>
+          <div class="dl-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </div>
+          ${asset.size ? `<div class="dl-size">${fmtSize(asset.size)}</div>` : ''}
+        </div>`;
+      grid.appendChild(card);
+    });
+
+    area.innerHTML = '';
+    area.appendChild(grid);
+  }
+
+  function renderError(msg) {
+    document.getElementById('download-area').innerHTML = `
+      <div class="error-state">
+        <div class="err-icon">⚠️</div>
+        <p>${msg}</p>
+        <p style="margin-top:8px">
+          <a href="https://github.com/${REPO}/releases" target="_blank" rel="noopener">
+            Browse releases on GitHub →
+          </a>
+        </p>
+      </div>`;
+  }
+
+  async function loadRelease() {
+    try {
+      const res = await fetch(API, {
+        headers: { Accept: 'application/vnd.github+json' }
+      });
+
+      if (res.status === 404) {
+        renderError("No published release found yet. Check back after the first version tag is pushed.");
+        return;
+      }
+      if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
+
+      const data = await res.json();
+      renderCards(data.assets || [], data.tag_name || '');
+    } catch (err) {
+      console.error(err);
+      renderError("Couldn't reach GitHub. Please visit the releases page directly.");
+    }
+  }
+
+  loadRelease();
+</script>
+</body>
+</html>
