@@ -82,8 +82,8 @@ public class TrafficSimulatorGUI extends JFrame {
     // ── Constructor ───────────────────────────────────────────────────────────
 
     public TrafficSimulatorGUI() {
-        this.controlPanelWidth = (int) (WINDOW_WIDTH * 0.23);
         super("Smart City Traffic Simulator v1.1");
+        this.controlPanelWidth = (int) (WINDOW_WIDTH * 0.23);
 
         vehicles = new ArrayList<>();
         trafficController = new TrafficController();
