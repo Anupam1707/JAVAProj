@@ -1,15 +1,23 @@
 name: Build Installers (All Platforms)
 
-# Trigger: every push to main, or when you manually click "Run workflow"
+# ── Triggers ────────────────────────────────────────────────────────────────
+# • Push a tag like "v1.1" → full build + GitHub Release created automatically
+# • Push to main/master   → build only (artifacts kept 30 days, no release)
+# • Manual "Run workflow" → build only
 on:
   push:
     branches: [ main, master ]
+    tags:     [ 'v*' ]          # e.g. v1.1, v2.0.1
   workflow_dispatch:
+
+# Allow the release job to create / update GitHub Releases
+permissions:
+  contents: write
 
 jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
-  # macOS → produces SmartCityTraffic-<version>.dmg
+  # macOS → SmartCityTraffic-<version>.dmg
   # ──────────────────────────────────────────────────────────────────────────
   build-macos:
     name: macOS DMG
@@ -61,8 +69,7 @@ jobs:
           retention-days: 30
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Windows → produces SmartCityTraffic-<version>.exe
-  # (WiX Toolset is pre-installed on windows-latest runners)
+  # Windows → SmartCityTraffic-<version>.exe
   # ──────────────────────────────────────────────────────────────────────────
   build-windows:
     name: Windows EXE
@@ -101,7 +108,6 @@ jobs:
                     Sort-Object Name -Descending |
                     Select-Object -First 1 -ExpandProperty FullName
           if (-not $wixDir) {
-            # Fallback: install via choco if somehow missing
             choco install wixtoolset -y --no-progress
             $wixDir = Get-ChildItem "C:\Program Files (x86)" -Filter "WiX Toolset v3*" -Directory |
                       Sort-Object Name -Descending |
@@ -138,7 +144,7 @@ jobs:
           retention-days: 30
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Linux → produces SmartCityTraffic-<version>.deb  +  .rpm
+  # Linux → smartcitytraffic-<version>.deb + .rpm
   # ──────────────────────────────────────────────────────────────────────────
   build-linux:
     name: Linux DEB + RPM
@@ -210,3 +216,63 @@ jobs:
             dist/*.deb
             dist/*.rpm
           retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Release → only runs when a version tag is pushed (e.g. git tag v1.1)
+  # Waits for all 3 builds, then publishes a GitHub Release with every file.
+  # ──────────────────────────────────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [ build-macos, build-windows, build-linux ]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download macOS installer
+        uses: actions/download-artifact@v4
+        with:
+          name: SmartCityTraffic-macOS
+          path: release-files
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: SmartCityTraffic-Windows
+          path: release-files
+
+      - name: Download Linux installers
+        uses: actions/download-artifact@v4
+        with:
+          name: SmartCityTraffic-Linux
+          path: release-files
+
+      - name: List release files
+        run: ls -lh release-files/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Smart City Traffic Simulator ${{ github.ref_name }}"
+          body: |
+            ## Smart City Traffic Simulator ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | Installer |
+            |----------|-----------|
+            | 🍎 macOS | `SmartCityTraffic-1.1.dmg` |
+            | 🪟 Windows | `SmartCityTraffic-1.1.exe` |
+            | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_1.1-1_amd64.deb` |
+            | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-1.1-1.x86_64.rpm` |
+
+            > **No Java required** — all installers bundle their own JRE.
+
+            ### Features
+            - 4-way smart traffic intersection simulation
+            - Real-time adaptive signal control
+            - Emergency vehicle (ambulance) override
+            - Pause/Resume, speed control, per-lane stats
+            - In-app log viewer with file logging
+          files: release-files/*
+          draft: false
+          prerelease: false

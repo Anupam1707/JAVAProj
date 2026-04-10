@@ -31,8 +31,19 @@ public class SimulatorLogger {
     /** Maximum number of log lines kept in the in-memory ring buffer. */
     public static final int MAX_BUFFER_LINES = 500;
 
-    /** Directory that will contain the log file (relative to working dir). */
-    public static final String DEFAULT_LOG_DIR = "logs";
+    /**
+     * App-specific log directory, rooted in the user's home folder so it is
+     * always writable – even when the app is launched from a jpackage installer
+     * (where the working directory may be inside a read-only bundle).
+     *
+     * <ul>
+     *   <li>macOS / Linux: {@code ~/SmartCityTraffic/logs}</li>
+     *   <li>Windows:       {@code %USERPROFILE%\SmartCityTraffic\logs}</li>
+     * </ul>
+     */
+    private static Path resolveLogDir() {
+        return Paths.get(System.getProperty("user.home"), "SmartCityTraffic", "logs");
+    }
 
     // ── Singleton state ───────────────────────────────────────────────────────
 
@@ -51,8 +62,8 @@ public class SimulatorLogger {
     // ── Private constructor ───────────────────────────────────────────────────
 
     private SimulatorLogger() throws IOException {
-        // Create the log directory if it doesn't exist.
-        Path logDir = Paths.get(DEFAULT_LOG_DIR);
+        // Resolve a writable log directory under the user's home folder.
+        Path logDir = resolveLogDir();
         Files.createDirectories(logDir);
 
         // Session log file name contains the startup timestamp.
