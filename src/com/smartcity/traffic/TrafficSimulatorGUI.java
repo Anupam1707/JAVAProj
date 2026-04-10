@@ -362,7 +362,20 @@ public class TrafficSimulatorGUI extends JFrame {
 
         northWestControls.setBounds(leftX, nwY, leftW, nwH);
         northEastControls.setBounds(rightX, topY, rightW, topH);
-        southWestControls.setBounds(leftX, bottomY, leftW, bottomH);
+
+        // Give the SW controls extra vertical space and a slight left inset so
+        // the speed slider and labels are not clipped near the screen edge.
+        int swTopRaise = 50;
+        int swLeftInset = 0;
+        int swY = Math.max(topY, bottomY - swTopRaise);
+        int swX = leftX + swLeftInset;
+        int swW = leftW - swLeftInset;
+        int swH = panelH - swY - margin;
+        if (swW > 0 && swH > 0) {
+            southWestControls.setBounds(swX, swY, swW, swH);
+        } else {
+            southWestControls.setBounds(leftX, bottomY, leftW, bottomH);
+        }
 
         // Keep the SE box closer to the road and taller for spawn/emergency controls.
         int seTopPaddingFromRoad = 8;
