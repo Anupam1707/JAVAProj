@@ -251,9 +251,26 @@
     .dl-card:hover::before { opacity: 1; }
 
     .dl-icon {
-      font-size: 2.2rem;
-      line-height: 1;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
     }
+
+    .dl-icon svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+      display: block;
+    }
+
+    .dl-card.mac .dl-icon { color: #e9ecf3; }
+    .dl-card.win .dl-icon { color: #4cc4ff; }
+    .dl-card.deb .dl-icon,
+    .dl-card.rpm .dl-icon { color: #ffd166; }
 
     .dl-platform {
       font-size: 1rem;
@@ -511,14 +528,26 @@
   const REPO = 'Anupam1707/JAVAProj';
   const API  = `https://api.github.com/repos/${REPO}/releases/latest`;
 
-  // Maps a release asset filename → { platform, class, icon, ext }
+  // Maps a release asset filename → { platform, class, iconType, ext }
   function classifyAsset(name) {
     const n = name.toLowerCase();
-    if (n.endsWith('.dmg'))                       return { platform: 'macOS',            cls: 'mac', icon: '🍎', ext: '.dmg' };
-    if (n.endsWith('.exe'))                       return { platform: 'Windows',           cls: 'win', icon: '🪟', ext: '.exe' };
-    if (n.endsWith('.deb'))                       return { platform: 'Linux (Debian/Ubuntu)', cls: 'deb', icon: '🐧', ext: '.deb' };
-    if (n.endsWith('.rpm'))                       return { platform: 'Linux (Fedora/RHEL)',   cls: 'rpm', icon: '🐧', ext: '.rpm' };
+    if (n.endsWith('.dmg')) return { platform: 'macOS', cls: 'mac', iconType: 'apple', ext: '.dmg' };
+    if (n.endsWith('.exe')) return { platform: 'Windows', cls: 'win', iconType: 'windows', ext: '.exe' };
+    if (n.endsWith('.deb')) return { platform: 'Linux (Debian/Ubuntu)', cls: 'deb', iconType: 'linux', ext: '.deb' };
+    if (n.endsWith('.rpm')) return { platform: 'Linux (Fedora/RHEL)', cls: 'rpm', iconType: 'linux', ext: '.rpm' };
     return null;
+  }
+
+  function getOsLogo(iconType) {
+    if (iconType === 'apple') {
+      return '<svg viewBox="0 0 384 512" aria-hidden="true"><path d="M318.7 268.5c-.2-42.9 35.1-63.5 36.7-64.5-20-29.2-51.2-33.2-62.3-33.7-26.5-2.7-51.7 15.6-65.2 15.6-13.5 0-34.4-15.2-56.6-14.8-29.1 .4-56 16.9-71 43-30.4 52.6-7.8 130.3 21.8 173 14.5 20.7 31.8 44 54.5 43.2 21.9-.9 30.2-14.2 56.7-14.2 26.5 0 34 14.2 57.1 13.7 23.6-.4 38.6-21.4 53-42.2 16.6-24.3 23.4-47.8 23.7-49-0.5-.2-45.3-17.4-45.4-69.1zM274.7 96.9c12.1-14.7 20.2-35.1 18-55.4-17.5 .7-38.8 11.7-51.4 26.4-11.3 13-21.1 33.8-18.4 53.7 19.5 1.5 39.7-9.9 51.8-24.7z"/></svg>';
+    }
+
+    if (iconType === 'windows') {
+      return '<svg viewBox="0 0 512 512" aria-hidden="true"><path d="M0 93.7l211.8-28.9v206.4H0V93.7zm0 324.6l211.8 29V303.6H0v114.7zM235.3 61.3L512 21.3v249.9H235.3V61.3zm0 389.4L512 490.7V303.6H235.3v147.1z"/></svg>';
+    }
+
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-.79 0-1.51.2-2.14.55-.12.07-.25.1-.38.1-.14 0-.27-.03-.39-.1A4.315 4.315 0 0 0 7 2C4.79 2 3 3.79 3 6c0 1.4.72 2.62 1.81 3.33-.17.54-.27 1.12-.27 1.72 0 1.24.39 2.38 1.05 3.31C4.61 15.06 4 16.45 4 18c0 2.21 1.79 4 4 4 1.19 0 2.26-.52 3-1.35A3.98 3.98 0 0 0 14 22c2.21 0 4-1.79 4-4 0-1.55-.61-2.94-1.59-3.64.66-.93 1.05-2.07 1.05-3.31 0-.6-.1-1.18-.27-1.72A3.997 3.997 0 0 0 21 6c0-2.21-1.79-4-4-4-.76 0-1.47.21-2.08.58-.12.08-.26.12-.4.12-.14 0-.28-.04-.4-.12A4.26 4.26 0 0 0 12 2zm0 2c1.24 0 2.27.94 2.39 2.18.03.33-.1.66-.35.89l-1.2 1.1 1.51.38c1.36.34 2.37 1.56 2.37 3.05 0 1.19-.64 2.22-1.58 2.78l-1.05.62.94.79c.81.68 1.31 1.7 1.31 2.81 0 1.65-1.35 3-3 3-.97 0-1.83-.46-2.38-1.18a1 1 0 0 0-1.58 0A2.98 2.98 0 0 1 8 21c-1.65 0-3-1.35-3-3 0-1.11.5-2.13 1.31-2.81l.94-.79-1.05-.62A3.26 3.26 0 0 1 4.62 11c0-1.49 1.01-2.71 2.37-3.05l1.51-.38-1.2-1.1a1 1 0 0 1-.35-.89A2.41 2.41 0 0 1 9.34 3c.5 0 .97.15 1.36.4.39.24.9.24 1.28 0 .39-.25.86-.4 1.36-.4z"/></svg>';
   }
 
   function fmtSize(bytes) {
@@ -550,14 +579,14 @@
     grid.className = 'download-grid';
 
     filtered.forEach((asset, i) => {
-      const { platform, cls, icon, ext } = asset.meta;
+      const { platform, cls, iconType, ext } = asset.meta;
       const card = document.createElement('a');
       card.href      = asset.browser_download_url;
       card.className = `dl-card ${cls} fade-up`;
       card.style.animationDelay = `${0.1 + i * 0.08}s`;
       card.setAttribute('aria-label', `Download for ${platform}`);
       card.innerHTML = `
-        <div class="dl-icon">${icon}</div>
+        <div class="dl-icon" aria-hidden="true">${getOsLogo(iconType)}</div>
         <div>
           <div class="dl-platform">${platform}</div>
           <div class="dl-ext">${ext} installer</div>
