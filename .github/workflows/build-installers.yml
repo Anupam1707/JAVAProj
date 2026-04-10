@@ -1,0 +1,203 @@
+name: Build Installers (All Platforms)
+
+# Trigger: every push to main, or when you manually click "Run workflow"
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # macOS → produces SmartCityTraffic-<version>.dmg
+  # ──────────────────────────────────────────────────────────────────────────
+  build-macos:
+    name: macOS DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Compile
+        run: |
+          mkdir -p out
+          find src -name "*.java" | xargs javac -d out
+
+      - name: Build JAR
+        run: |
+          jar --create \
+              --file SmartCityTraffic.jar \
+              --main-class com.smartcity.traffic.Main \
+              -C out .
+
+      - name: Package DMG with jpackage
+        run: |
+          mkdir -p dist
+          jpackage \
+            --type dmg \
+            --name "SmartCityTraffic" \
+            --app-version "1.1" \
+            --vendor "OOPS Project" \
+            --description "Smart City Traffic Simulator" \
+            --input . \
+            --main-jar SmartCityTraffic.jar \
+            --main-class com.smartcity.traffic.Main \
+            --dest dist \
+            --java-options "-Xmx512m" \
+            --mac-package-name "SmartCityTraffic"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartCityTraffic-macOS
+          path: dist/*.dmg
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Windows → produces SmartCityTraffic-<version>.exe
+  # (WiX Toolset is pre-installed on windows-latest runners)
+  # ──────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows EXE
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Compile
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          $files = Get-ChildItem -Recurse -Filter *.java src | Select-Object -ExpandProperty FullName
+          javac -d out $files
+
+      - name: Build JAR
+        shell: pwsh
+        run: |
+          jar --create `
+              --file SmartCityTraffic.jar `
+              --main-class com.smartcity.traffic.Main `
+              -C out .
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          # WiX 3.x is needed by jpackage on Windows
+          choco install wixtoolset --version=3.11.2 -y --no-progress
+          # Add WiX to PATH for this step
+          echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Package EXE with jpackage
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          jpackage `
+            --type exe `
+            --name "SmartCityTraffic" `
+            --app-version "1.1" `
+            --vendor "OOPS Project" `
+            --description "Smart City Traffic Simulator" `
+            --input . `
+            --main-jar SmartCityTraffic.jar `
+            --main-class com.smartcity.traffic.Main `
+            --dest dist `
+            --java-options "-Xmx512m" `
+            --win-shortcut `
+            --win-menu `
+            --win-menu-group "Smart City" `
+            --win-dir-chooser
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartCityTraffic-Windows
+          path: dist/*.exe
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Linux → produces SmartCityTraffic-<version>.deb  +  .rpm
+  # ──────────────────────────────────────────────────────────────────────────
+  build-linux:
+    name: Linux DEB + RPM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install RPM tools
+        run: sudo apt-get install -y rpm
+
+      - name: Compile
+        run: |
+          mkdir -p out
+          find src -name "*.java" | xargs javac -d out
+
+      - name: Build JAR
+        run: |
+          jar --create \
+              --file SmartCityTraffic.jar \
+              --main-class com.smartcity.traffic.Main \
+              -C out .
+
+      - name: Package DEB with jpackage
+        run: |
+          mkdir -p dist
+          jpackage \
+            --type deb \
+            --name "smartcitytraffic" \
+            --app-version "1.1" \
+            --vendor "OOPS Project" \
+            --description "Smart City Traffic Simulator" \
+            --input . \
+            --main-jar SmartCityTraffic.jar \
+            --main-class com.smartcity.traffic.Main \
+            --dest dist \
+            --java-options "-Xmx512m" \
+            --linux-shortcut \
+            --linux-menu-group "Education"
+
+      - name: Package RPM with jpackage
+        run: |
+          jpackage \
+            --type rpm \
+            --name "smartcitytraffic" \
+            --app-version "1.1" \
+            --vendor "OOPS Project" \
+            --description "Smart City Traffic Simulator" \
+            --input . \
+            --main-jar SmartCityTraffic.jar \
+            --main-class com.smartcity.traffic.Main \
+            --dest dist \
+            --java-options "-Xmx512m" \
+            --linux-shortcut \
+            --linux-menu-group "Education"
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartCityTraffic-Linux
+          path: |
+            dist/*.deb
+            dist/*.rpm
+          retention-days: 30

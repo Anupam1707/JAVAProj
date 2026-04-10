@@ -1,0 +1,6 @@
+out/
+dist/
+SmartCityTraffic.jar
+*.class
+logs/
+*.log
