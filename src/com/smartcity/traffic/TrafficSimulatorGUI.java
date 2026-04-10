@@ -128,13 +128,25 @@ public class TrafficSimulatorGUI extends JFrame {
         int overlayWidth = controlPanelWidth;
 
         // Title
-        JPanel titlePanel = new JPanel(new BorderLayout());
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
         titlePanel.setBackground(new Color(30, 30, 33));
-        titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        titlePanel.setMaximumSize(new Dimension(overlayWidth, 60));
-        JLabel titleLabel = new JLabel("TRAFFIC CONTROL", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        titleLabel.setForeground(new Color(100, 200, 255));
+        titlePanel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        titlePanel.setPreferredSize(new Dimension(overlayWidth, 56));
+        titlePanel.setMinimumSize(new Dimension(220, 56));
+        titlePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
+
+        JLabel titleBadge = new JLabel("CTRL");
+        titleBadge.setFont(new Font("Arial", Font.BOLD, 10));
+        titleBadge.setForeground(new Color(240, 240, 245));
+        titleBadge.setOpaque(true);
+        titleBadge.setBackground(new Color(70, 120, 200));
+        titleBadge.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
+
+        JLabel titleLabel = new JLabel("TRAFFIC CONTROL");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 17));
+        titleLabel.setForeground(new Color(170, 220, 255));
+
+        titlePanel.add(titleBadge);
         titlePanel.add(titleLabel);
 
         // ── Status panel ──────────────────────────────────────────────────────
