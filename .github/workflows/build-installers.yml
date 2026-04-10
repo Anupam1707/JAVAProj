@@ -15,12 +15,11 @@ permissions:
   contents: write
 
 env:
-  APP_VERSION: 'latest'
+  APP_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && replace(github.ref_name, 'v', '') || '1.0.0' }}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # WORKFLOW NOTES
-# ══════════════════════════════════════════════════════════════════════════════
-# This workflow builds cross-platform installers for Smart City Traffic Simulator
+# ════════════════════════════════════
 #
 # Triggers:
 #   - Tag push (v*):     Full build + GitHub Release
@@ -32,8 +31,8 @@ env:
 #   • Windows:            EXE + MSI installers
 #   • Linux:              DEB + RPM packages
 #
-# Version:  Centralized in APP_VERSION env var (currently 2.1.2)
-#           All platforms build with this version for consistency
+# Version:  Derived from tag when available (v4.0 -> 4.0),
+#           otherwise falls back to 2.1.2 for branch/manual builds.
 #
 # Build Time: ~45-60 minutes (full CI/CD chain)
 #
