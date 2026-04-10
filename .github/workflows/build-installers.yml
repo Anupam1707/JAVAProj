@@ -268,6 +268,14 @@ jobs:
             dist/*.rpm
           retention-days: 30
 
+      - name: Upload JAR artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartCityTraffic-JAR
+          path: SmartCityTraffic.jar
+          retention-days: 30
+
   # ──────────────────────────────────────────────────────────────────────────
   # Release → only runs when a version tag is pushed (e.g. git tag v1.1)
   # Waits for matrix build, then publishes a GitHub Release with explicit files.
@@ -295,6 +303,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: SmartCityTraffic-Linux
+          path: release-files
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SmartCityTraffic-JAR
           path: release-files
 
       - name: List release files
@@ -332,5 +346,6 @@ jobs:
             release-files/*.exe
             release-files/*.deb
             release-files/*.rpm
+            release-files/*.jar
           draft: false
           prerelease: false

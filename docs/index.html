@@ -246,6 +246,7 @@
     .dl-card.win::before    { background: radial-gradient(ellipse at top left, rgba(0,163,219,0.08), transparent 70%); }
     .dl-card.deb::before    { background: radial-gradient(ellipse at top left, rgba(234,84,85,0.08), transparent 70%); }
     .dl-card.rpm::before    { background: radial-gradient(ellipse at top left, rgba(62,207,142,0.08), transparent 70%); }
+    .dl-card.jar::before    { background: radial-gradient(ellipse at top left, rgba(245,158,11,0.10), transparent 70%); }
 
     .dl-card:hover { border-color: var(--border-h); background: var(--bg-card-h); transform: translateY(-3px); }
     .dl-card:hover::before { opacity: 1; }
@@ -271,6 +272,7 @@
     .dl-card.win .dl-icon { color: #4cc4ff; }
     .dl-card.deb .dl-icon,
     .dl-card.rpm .dl-icon { color: #ffd166; }
+    .dl-card.jar .dl-icon { color: #ffb454; }
 
     .dl-platform {
       font-size: 1rem;
@@ -310,6 +312,7 @@
     .dl-card.win  .dl-btn { background: linear-gradient(135deg, #00a3db, #0066cc); color: #fff; }
     .dl-card.deb  .dl-btn { background: linear-gradient(135deg, #ea5454, #c02f2f); color: #fff; }
     .dl-card.rpm  .dl-btn { background: linear-gradient(135deg, #3ecf8e, #1a9962); color: #fff; }
+    .dl-card.jar  .dl-btn { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
 
     .dl-card:hover .dl-btn { filter: brightness(1.1); }
 
@@ -535,6 +538,7 @@
     if (n.endsWith('.exe')) return { platform: 'Windows', cls: 'win', iconType: 'windows', ext: '.exe' };
     if (n.endsWith('.deb')) return { platform: 'Linux (Debian/Ubuntu)', cls: 'deb', iconType: 'linux', ext: '.deb' };
     if (n.endsWith('.rpm')) return { platform: 'Linux (Fedora/RHEL)', cls: 'rpm', iconType: 'linux', ext: '.rpm' };
+    if (n.endsWith('.jar')) return { platform: 'Cross-platform Java', cls: 'jar', iconType: 'java', ext: '.jar' };
     return null;
   }
 
@@ -545,6 +549,10 @@
 
     if (iconType === 'windows') {
       return '<svg viewBox="0 0 512 512" aria-hidden="true"><path d="M0 93.7l211.8-28.9v206.4H0V93.7zm0 324.6l211.8 29V303.6H0v114.7zM235.3 61.3L512 21.3v249.9H235.3V61.3zm0 389.4L512 490.7V303.6H235.3v147.1z"/></svg>';
+    }
+
+    if (iconType === 'java') {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h10l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V3zm10 1.5V9h4.5L14 4.5zM8 13h8v1.6H8V13zm0 2.8h8v1.6H8v-1.6z"/><text x="8" y="11" font-size="4.2" font-family="Arial, sans-serif" font-weight="700" fill="currentColor">JAR</text></svg>';
     }
 
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-.79 0-1.51.2-2.14.55-.12.07-.25.1-.38.1-.14 0-.27-.03-.39-.1A4.315 4.315 0 0 0 7 2C4.79 2 3 3.79 3 6c0 1.4.72 2.62 1.81 3.33-.17.54-.27 1.12-.27 1.72 0 1.24.39 2.38 1.05 3.31C4.61 15.06 4 16.45 4 18c0 2.21 1.79 4 4 4 1.19 0 2.26-.52 3-1.35A3.98 3.98 0 0 0 14 22c2.21 0 4-1.79 4-4 0-1.55-.61-2.94-1.59-3.64.66-.93 1.05-2.07 1.05-3.31 0-.6-.1-1.18-.27-1.72A3.997 3.997 0 0 0 21 6c0-2.21-1.79-4-4-4-.76 0-1.47.21-2.08.58-.12.08-.26.12-.4.12-.14 0-.28-.04-.4-.12A4.26 4.26 0 0 0 12 2zm0 2c1.24 0 2.27.94 2.39 2.18.03.33-.1.66-.35.89l-1.2 1.1 1.51.38c1.36.34 2.37 1.56 2.37 3.05 0 1.19-.64 2.22-1.58 2.78l-1.05.62.94.79c.81.68 1.31 1.7 1.31 2.81 0 1.65-1.35 3-3 3-.97 0-1.83-.46-2.38-1.18a1 1 0 0 0-1.58 0A2.98 2.98 0 0 1 8 21c-1.65 0-3-1.35-3-3 0-1.11.5-2.13 1.31-2.81l.94-.79-1.05-.62A3.26 3.26 0 0 1 4.62 11c0-1.49 1.01-2.71 2.37-3.05l1.51-.38-1.2-1.1a1 1 0 0 1-.35-.89A2.41 2.41 0 0 1 9.34 3c.5 0 .97.15 1.36.4.39.24.9.24 1.28 0 .39-.25.86-.4 1.36-.4z"/></svg>';
@@ -580,6 +588,7 @@
 
     filtered.forEach((asset, i) => {
       const { platform, cls, iconType, ext } = asset.meta;
+      const packageLabel = ext === '.jar' ? '.jar package' : `${ext} installer`;
       const card = document.createElement('a');
       card.href      = asset.browser_download_url;
       card.className = `dl-card ${cls} fade-up`;
@@ -589,7 +598,7 @@
         <div class="dl-icon" aria-hidden="true">${getOsLogo(iconType)}</div>
         <div>
           <div class="dl-platform">${platform}</div>
-          <div class="dl-ext">${ext} installer</div>
+          <div class="dl-ext">${packageLabel}</div>
         </div>
         <div class="dl-filename">${asset.name}</div>
         <div>
