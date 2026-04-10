@@ -277,30 +277,36 @@ jobs:
       - name: List release files
         run: ls -lh release-files/
 
+      - name: Prepare release body
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cat > release-body.md <<'EOF'
+          ## Smart City Traffic Simulator ${GITHUB_REF_NAME}
+
+          ### Downloads
+          | Platform | Installer |
+          |----------|-----------|
+          | 🍎 macOS | `SmartCityTraffic-${version}.dmg` |
+          | 🪟 Windows | `SmartCityTraffic-${version}.exe` |
+          | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_${version}-1_amd64.deb` |
+          | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-${version}-1.x86_64.rpm` |
+
+          > **No Java required** — all installers bundle their own JRE.
+
+          ### Features
+          - 4-way smart traffic intersection simulation
+          - Real-time adaptive signal control
+          - Emergency vehicle (ambulance) override
+          - Pause/Resume, speed control, per-lane stats
+          - In-app log viewer with file logging
+          EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "Smart City Traffic Simulator ${{ github.ref_name }}"
-          body: |
-            ## Smart City Traffic Simulator ${{ github.ref_name }}
-
-            ### Downloads
-            | Platform | Installer |
-            |----------|-----------|
-            | 🍎 macOS | `SmartCityTraffic-<version>.dmg` |
-            | 🪟 Windows | `SmartCityTraffic-<version>.exe` |
-            | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_<version>-1_amd64.deb` |
-            | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-<version>-1.x86_64.rpm` |
-
-            > **No Java required** — all installers bundle their own JRE.
-
-            ### Features
-            - 4-way smart traffic intersection simulation
-            - Real-time adaptive signal control
-            - Emergency vehicle (ambulance) override
-            - Pause/Resume, speed control, per-lane stats
-            - In-app log viewer with file logging
+          body_path: release-body.md
           files: release-files/*
           draft: false
           prerelease: false
