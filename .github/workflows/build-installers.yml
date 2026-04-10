@@ -314,10 +314,10 @@ jobs:
           ### Downloads
           | Platform | Installer |
           |----------|-----------|
-          | 🍎 macOS | `SmartCityTraffic-${release_version}.dmg` |
-          | 🪟 Windows | `SmartCityTraffic-${release_version}.exe` |
-          | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_${release_version}-1_amd64.deb` |
-          | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-${release_version}-1.x86_64.rpm` |
+          | 🍎 macOS | SmartCityTraffic-${release_version}.dmg |
+          | 🪟 Windows | SmartCityTraffic-${release_version}.exe |
+          | 🐧 Linux (Debian/Ubuntu) | smartcitytraffic_${release_version}-1_amd64.deb |
+          | 🐧 Linux (Fedora/RHEL) | smartcitytraffic-${release_version}-1.x86_64.rpm |
 
           > **No Java required** — all installers bundle their own JRE.
 
