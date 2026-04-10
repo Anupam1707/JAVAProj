@@ -2,8 +2,10 @@ package com.smartcity.traffic;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -41,6 +43,7 @@ public class TrafficSimulatorGUI extends JFrame {
     private JButton spawnAmbulanceButton;
     private JButton clearTrafficButton;
     private JButton pauseResumeButton;
+    private JButton viewLogsButton;
     private JSlider speedSlider;
 
     // ── Simulation Components ─────────────────────────────────────────────────
@@ -190,6 +193,11 @@ public class TrafficSimulatorGUI extends JFrame {
         clearTrafficButton = createStyledButton("🗑 Clear All Traffic", new Color(220, 53, 69));
         clearTrafficButton.addActionListener(e -> clearAllTraffic());
         controlsPanel.add(clearTrafficButton);
+        controlsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+
+        viewLogsButton = createStyledButton("📋 View Logs", new Color(70, 130, 180));
+        viewLogsButton.addActionListener((ActionEvent e) -> showLogsDialog());
+        controlsPanel.add(viewLogsButton);
         controlsPanel.add(Box.createRigidArea(new Dimension(0, 8)));
 
         // Speed slider
@@ -492,6 +500,101 @@ public class TrafficSimulatorGUI extends JFrame {
     private void clearAllTraffic() {
         vehicles.clear();
         System.out.println("All traffic cleared");
+    }
+
+    // ── Log viewer dialog ─────────────────────────────────────────────────────
+
+    private void showLogsDialog() {
+        // Fetch the latest in-memory log lines.
+        List<String> lines = SimulatorLogger.getBufferedLines();
+        java.nio.file.Path logPath = SimulatorLogger.getLogFilePath();
+
+        // ── Build the text content ──────────────────────────────────────────
+        StringBuilder sb = new StringBuilder();
+        if (lines.isEmpty()) {
+            sb.append("No log entries yet.");
+        } else {
+            // Show the most recent entries first (easiest to read).
+            for (int i = lines.size() - 1; i >= 0; i--) {
+                sb.append(lines.get(i)).append("\n");
+            }
+        }
+
+        // ── Dialog shell ───────────────────────────────────────────────────
+        JDialog dialog = new JDialog(this, "📋 Simulation Logs", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        // ── Dark background panel ──────────────────────────────────────────
+        JPanel root = new JPanel(new BorderLayout(0, 0));
+        root.setBackground(new Color(20, 22, 26));
+
+        // ── Header ────────────────────────────────────────────────────────
+        JPanel header = new JPanel(new BorderLayout(10, 0));
+        header.setBackground(new Color(28, 30, 36));
+        header.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
+
+        JLabel title = new JLabel("📋  Simulation Logs  –  latest session");
+        title.setFont(new Font("Arial", Font.BOLD, 15));
+        title.setForeground(new Color(100, 200, 255));
+        header.add(title, BorderLayout.WEST);
+
+        if (logPath != null) {
+            JLabel filePath = new JLabel(logPath.toAbsolutePath().toString());
+            filePath.setFont(new Font("Consolas", Font.PLAIN, 10));
+            filePath.setForeground(new Color(100, 100, 120));
+            header.add(filePath, BorderLayout.SOUTH);
+        }
+
+        root.add(header, BorderLayout.NORTH);
+
+        // ── Scrollable text area ───────────────────────────────────────────
+        JTextArea textArea = new JTextArea(sb.toString());
+        textArea.setFont(new Font("Consolas", Font.PLAIN, 12));
+        textArea.setBackground(new Color(18, 19, 24));
+        textArea.setForeground(new Color(200, 215, 235));
+        textArea.setCaretColor(new Color(100, 200, 255));
+        textArea.setEditable(false);
+        textArea.setLineWrap(false);
+        textArea.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+
+        JScrollPane scroll = new JScrollPane(textArea);
+        scroll.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0,
+                new Color(50, 55, 65)));
+        scroll.getViewport().setBackground(new Color(18, 19, 24));
+        scroll.getVerticalScrollBar().setBackground(new Color(28, 30, 36));
+        scroll.getHorizontalScrollBar().setBackground(new Color(28, 30, 36));
+        // Scroll to top (most recent entry is first)
+        textArea.setCaretPosition(0);
+        root.add(scroll, BorderLayout.CENTER);
+
+        // ── Footer bar ─────────────────────────────────────────────────────
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 10));
+        footer.setBackground(new Color(28, 30, 36));
+
+        JLabel countLabel = new JLabel(lines.size() + " entries");
+        countLabel.setFont(new Font("Consolas", Font.PLAIN, 11));
+        countLabel.setForeground(new Color(120, 130, 150));
+        footer.add(countLabel);
+
+        JButton closeBtn = new JButton("Close");
+        closeBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        closeBtn.setBackground(new Color(52, 152, 219));
+        closeBtn.setForeground(Color.WHITE);
+        closeBtn.setFocusPainted(false);
+        closeBtn.setBorderPainted(false);
+        closeBtn.setOpaque(true);
+        closeBtn.setMargin(new Insets(6, 20, 6, 20));
+        closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        closeBtn.addActionListener(ev -> dialog.dispose());
+        footer.add(closeBtn);
+
+        root.add(footer, BorderLayout.SOUTH);
+
+        // ── Size & position ────────────────────────────────────────────────
+        dialog.setContentPane(root);
+        dialog.setSize(820, 520);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     // ── Vehicle spawning ──────────────────────────────────────────────────────
