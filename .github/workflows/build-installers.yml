@@ -14,9 +14,6 @@ on:
 permissions:
   contents: write
 
-env:
-  APP_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && replace(github.ref_name, 'v', '') || '1.1' }}
-
 jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -29,6 +26,15 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Resolve app version
+        run: |
+          version="1.1"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "Using APP_VERSION=$version"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -81,6 +87,16 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Resolve app version
+        shell: pwsh
+        run: |
+          $version = "1.1"
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME.StartsWith("v")) {
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+          }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Using APP_VERSION=$version"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -156,6 +172,15 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Resolve app version
+        run: |
+          version="1.1"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "Using APP_VERSION=$version"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -263,10 +288,10 @@ jobs:
             ### Downloads
             | Platform | Installer |
             |----------|-----------|
-            | 🍎 macOS | `SmartCityTraffic-${{ env.APP_VERSION }}.dmg` |
-            | 🪟 Windows | `SmartCityTraffic-${{ env.APP_VERSION }}.exe` |
-            | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_${{ env.APP_VERSION }}-1_amd64.deb` |
-            | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-${{ env.APP_VERSION }}-1.x86_64.rpm` |
+            | 🍎 macOS | `SmartCityTraffic-<version>.dmg` |
+            | 🪟 Windows | `SmartCityTraffic-<version>.exe` |
+            | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_<version>-1_amd64.deb` |
+            | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-<version>-1.x86_64.rpm` |
 
             > **No Java required** — all installers bundle their own JRE.
 
