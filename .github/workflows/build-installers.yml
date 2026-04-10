@@ -93,13 +93,22 @@ jobs:
               --main-class com.smartcity.traffic.Main `
               -C out .
 
-      - name: Install WiX Toolset
+      - name: Add WiX to PATH
         shell: pwsh
         run: |
-          # WiX 3.x is needed by jpackage on Windows
-          choco install wixtoolset --version=3.11.2 -y --no-progress
-          # Add WiX to PATH for this step
-          echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # WiX 3.x is pre-installed on windows-latest; find it dynamically.
+          $wixDir = Get-ChildItem "C:\Program Files (x86)" -Filter "WiX Toolset v3*" -Directory |
+                    Sort-Object Name -Descending |
+                    Select-Object -First 1 -ExpandProperty FullName
+          if (-not $wixDir) {
+            # Fallback: install via choco if somehow missing
+            choco install wixtoolset -y --no-progress
+            $wixDir = Get-ChildItem "C:\Program Files (x86)" -Filter "WiX Toolset v3*" -Directory |
+                      Sort-Object Name -Descending |
+                      Select-Object -First 1 -ExpandProperty FullName
+          }
+          Write-Host "Using WiX at: $wixDir\bin"
+          "$wixDir\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Package EXE with jpackage
         shell: pwsh
