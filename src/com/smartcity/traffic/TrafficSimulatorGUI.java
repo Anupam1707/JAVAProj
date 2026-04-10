@@ -132,8 +132,8 @@ public class TrafficSimulatorGUI extends JFrame {
         titlePanel.setBackground(new Color(30, 30, 33));
         titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         titlePanel.setMaximumSize(new Dimension(overlayWidth, 60));
-        JLabel titleLabel = new JLabel("🚦 TRAFFIC CONTROL", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        JLabel titleLabel = new JLabel("TRAFFIC CONTROL", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         titleLabel.setForeground(new Color(100, 200, 255));
         titlePanel.add(titleLabel);
 
@@ -241,7 +241,7 @@ public class TrafficSimulatorGUI extends JFrame {
         String[] laneNames = TrafficController.getLaneSequence();
         // Interchange icons and colors for North<->South and East<->West
         // Arrows now match the 'From' direction (where vehicles originate)
-        String[] icons = { "⬆️", "➡️", "⬇️", "⬅️" };
+        String[] icons = { "↑", "→", "↓", "←" };
         Color[] btnColors = {
             new Color(155, 89, 182), // South (was North)
             new Color(241, 196, 15), // West (was East)
