@@ -44,6 +44,7 @@ public class TrafficSimulatorGUI extends JFrame {
     private JButton clearTrafficButton;
     private JButton pauseResumeButton;
     private JButton viewLogsButton;
+    private JButton quitAppButton;
     private JSlider speedSlider;
 
     // ── Simulation Components ─────────────────────────────────────────────────
@@ -198,6 +199,11 @@ public class TrafficSimulatorGUI extends JFrame {
         viewLogsButton = createStyledButton("📋 View Logs", new Color(70, 130, 180));
         viewLogsButton.addActionListener((ActionEvent e) -> showLogsDialog());
         controlsPanel.add(viewLogsButton);
+        controlsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+
+        quitAppButton = createStyledButton("⏻ Quit App", new Color(120, 40, 40));
+        quitAppButton.addActionListener(e -> quitApplication());
+        controlsPanel.add(quitAppButton);
         controlsPanel.add(Box.createRigidArea(new Dimension(0, 8)));
 
         // Speed slider
@@ -500,6 +506,18 @@ public class TrafficSimulatorGUI extends JFrame {
     private void clearAllTraffic() {
         vehicles.clear();
         System.out.println("All traffic cleared");
+    }
+
+    private void quitApplication() {
+        if (simulationTimer != null) {
+            simulationTimer.stop();
+        }
+        if (updateTimer != null) {
+            updateTimer.stop();
+        }
+        System.out.println("Application closed by user");
+        dispose();
+        System.exit(0);
     }
 
     // ── Log viewer dialog ─────────────────────────────────────────────────────

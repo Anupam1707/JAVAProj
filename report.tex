@@ -19,35 +19,32 @@
 \begin{titlepage}
     \centering
     \vspace*{1cm}
-    
-    {\Huge \textbf{Smart City Traffic Simulator (Simplified)}} \\
-    \vspace{1.5cm}
-    
-    {\Large \textbf{Course Name:}} [Insert Course Name] \\
+
+    {\Huge \textbf{Project Title: Smart City Traffic Simulator}} \\
+    \vspace{1.2cm}
+
+    {\Large \textbf{Course Name:}} Object Oriented Programming with Java (OOPJ) \\
     \vspace{1cm}
-    
+
     \textbf{Submitted By:} \\
     \vspace{0.5cm}
     \begin{tabular}{ll}
-        Student(s) Name: & [Your Name(s)] \\
-        Roll Number(s):  & [Your Roll Number(s)] \\
-        Section/Semester: & [Section/Sem] \\
+        Student(s) Name: & Anupam, Arjun, Abhinav \\
+        Roll Number(s): & [To be filled] \\
+        Section/Semester: & [To be filled] \\
     \end{tabular}
-    
-    \vspace{1.5cm}
-    
-    \textbf{Department:} \\
-    [Department Name] \\
-    \vspace{0.5cm}
-    
-    \textbf{University:} \\
-    [University Name] \\
-    
+
+    \vspace{1.3cm}
+
+    \textbf{Department:} [To be filled] \\
+    \vspace{0.3cm}
+    \textbf{University:} [To be filled] \\
+
     \vfill
-    
+
     \textbf{Submission Date:} \\
     \today
-    
+
 \end{titlepage}
 
 \newpage
@@ -56,7 +53,7 @@
 % ABSTRACT
 % ==========================================
 \section*{Abstract}
-This project is a minimal Java console application simulating a smart city intersection with basic traffic signal management and vehicle movement. It demonstrates OOPS principles such as abstraction, inheritance, and polymorphism. The simulation features a fixed 4-way intersection (North, East, South, West) and two vehicle types: Car and Ambulance. Emergency override logic ensures ambulances get priority green signals. The code is structured for clarity and ease of extension, focusing on educational value and simplicity. Technologies used include Java (JDK 8+), with console-based interaction.
+This project presents a Smart City Traffic Simulator designed to model traffic flow and signal control at a four-way intersection. The main purpose is to demonstrate object-oriented design and event-driven programming through a practical Java application. The system is implemented using Java and Java Swing for the graphical interface. Core features include adaptive traffic signal rotation, emergency vehicle override for ambulances, lane-wise vehicle tracking, real-time simulation statistics, pause/resume control, and speed adjustment. The project supports file handling through a persistent logging component that stores simulation output for review. Overall, the simulator provides an educational and extensible platform for understanding how software can represent real traffic management logic while applying key OOP concepts such as abstraction, inheritance, polymorphism, interfaces, and exception handling.
 
 \newpage
 
@@ -64,14 +61,13 @@ This project is a minimal Java console application simulating a smart city inter
 % INTRODUCTION
 % ==========================================
 \section{Introduction}
-Urban intersections require efficient traffic management to reduce congestion and prioritize emergency vehicles. This project addresses the challenge by simulating smart traffic control logic, focusing on emergency overrides and basic vehicle movement. The application is designed for educational purposes, illustrating OOPS concepts in a real-world scenario.
+Rapid urbanization has increased traffic congestion, travel delays, and emergency response times in modern cities. Traditional fixed-time traffic systems cannot always adapt to changing traffic conditions, which makes intersection management inefficient. This project addresses that problem by building a Smart City Traffic Simulator that models traffic light behavior, vehicle movement, and emergency vehicle prioritization at an intersection. The application is important because it demonstrates how software-based traffic logic can improve flow, reduce waiting time, and support safer road usage. It also serves as a practical academic project for understanding object-oriented programming, GUI design, and event-driven systems using Java.
 
 \section{Objectives}
 \begin{itemize}
-    \item Simulate a smart city intersection with basic traffic signal management.
-    \item Demonstrate OOPS principles: abstraction, inheritance, and polymorphism.
-    \item Implement emergency override logic for ambulances.
-    \item Provide a minimal, console-based simulation for easy understanding.
+    \item Design and implement a smart traffic intersection simulator using Java.
+    \item Build an interactive GUI for controlling and monitoring the simulation.
+    \item Implement emergency-priority logic and validate behavior using test cases.
 \end{itemize}
 
 \section{System Requirements}
@@ -83,9 +79,9 @@ Urban intersections require efficient traffic management to reduce congestion an
 
 \subsection{Software Requirements}
 \begin{itemize}
-    \item Java Development Kit (JDK) 8 or higher
+    \item Java JDK
     \item IDE (NetBeans/Eclipse/IntelliJ)
-    \item Operating System (Windows/Linux/macOS)
+    \item Operating System (Windows/Linux)
 \end{itemize}
 
 \section{System Design}
@@ -93,78 +89,72 @@ Urban intersections require efficient traffic management to reduce congestion an
 (Add diagram below)
 \begin{figure}[h]
     \centering
-    %\includegraphics[width=0.8\textwidth]{diagram.png} % Uncomment and add your file
+    %\includegraphics[width=0.8\textwidth]{diagram.png}
     \framebox(300,150){Place Block Diagram Here} % Placeholder box
     \caption{System Architecture}
 \end{figure}
 
 \subsection{Modules}
 \begin{itemize}
-    \item Main (Application entry point)
-    \item TrafficSimulator (Simulation logic)
-    \item TrafficLight (Signal management)
-    \item Vehicle (Abstract base class)
-    \item Car (Car vehicle)
-    \item Ambulance (Emergency vehicle)
+    \item Traffic Control Module (\texttt{TrafficController}, \texttt{TrafficLight})
+    \item Vehicle Module (\texttt{Vehicle}, \texttt{PrivateCar}, \texttt{PublicBus}, \texttt{Motorcycle}, \texttt{Ambulance})
+    \item User Interface and Logging Module (\texttt{TrafficSimulatorGUI}, \texttt{SimulatorLogger})
 \end{itemize}
 
 \section{Implementation}
-The application is implemented in Java as a console-based simulation. The code is organized into modules representing vehicles, traffic lights, and the simulator logic. Users interact via console commands:
-\begin{itemize}
-    \item \texttt{addcar} – Add a car to the simulation
-    \item \texttt{addambulance} – Add an ambulance (triggers emergency override)
-    \item \texttt{tick} – Advance the simulation by one step
-    \item \texttt{exit} – Quit the application
-\end{itemize}
-Emergency override logic ensures ambulances receive priority green signals for 3 seconds. The code demonstrates abstraction, inheritance, and polymorphism. No GUI or database is used; all interaction is via the console.
+The application was implemented in Java using a modular OOP architecture. The GUI was developed with Swing components such as \texttt{JFrame}, \texttt{JPanel}, \texttt{JButton}, \texttt{JLabel}, and \texttt{JSlider}. User actions (for example: spawning traffic, toggling smart mode, pause/resume, and viewing logs) are handled through event listeners attached to buttons and controls. The simulation runs using timers: one timer updates vehicle animation and another updates traffic-light logic each second. Vehicle behavior is implemented polymorphically through the abstract \texttt{Vehicle} class and its subclasses. Emergency handling is implemented through the \texttt{EmergencyVehicle} interface and ambulance override logic in \texttt{TrafficController}. File handling is implemented via \texttt{SimulatorLogger}, which writes timestamped logs to disk and also maintains an in-memory buffer for GUI log viewing. No external database is used in the current version.
 
 \section{Screenshots}
 Insert screenshots of the application and provide short descriptions for each.
 \begin{figure}[h]
     \centering
-    %\includegraphics[width=0.7\textwidth]{screenshot1.png} 
-    \framebox(200,100){Screenshot 1}
-    \caption{Description of screenshot 1}
+    %\includegraphics[width=0.75\textwidth]{screenshot1.png}
+    \framebox(220,110){Screenshot 1}
+    \caption{Main dashboard showing active traffic light and lane queues}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    %\includegraphics[width=0.75\textwidth]{screenshot2.png}
+    \framebox(220,110){Screenshot 2}
+    \caption{Emergency vehicle override event and updated signal state}
 \end{figure}
 
 \section{Testing}
-Create a table showing test cases.
-
 \begin{table}[h]
     \centering
     \begin{tabularx}{\textwidth}{|l|X|X|l|}
         \hline
         \textbf{Test Case} & \textbf{Input} & \textbf{Expected Output} & \textbf{Result} \\ \hline
-    01 & addcar & Car added to intersection & Pass \\ \hline
-    02 & addambulance & Ambulance added, emergency override triggered & Pass \\ \hline
-    03 & tick & Simulation advances, signals update & Pass \\ \hline
-    04 & exit & Application terminates & Pass \\ \hline
+        TC-01 & Add normal vehicle & Vehicle appears in selected lane queue & Pass \\ \hline
+        TC-02 & Add emergency vehicle & Emergency override activates and priority green is assigned & Pass \\ \hline
+        TC-03 & Start simulation & Signals rotate according to configured timing & Pass \\ \hline
+        TC-04 & Stop simulation & Timer pauses and lane states remain unchanged & Pass \\ \hline
+        TC-05 & Reset & Queues and signal states return to default values & Pass \\ \hline
     \end{tabularx}
 \end{table}
 
 \section{Results and Discussion}
-The simulation successfully demonstrates smart traffic control logic and emergency override for ambulances. All objectives were achieved, and the code is structured for clarity and educational value. Console output shows vehicle movement and signal changes as expected.
+The developed simulator produced stable and expected results across all planned test cases. Signal transitions occurred correctly, vehicles moved according to lane permissions, and emergency vehicles received immediate priority through override logic. The GUI improved visibility of internal system states, making behavior easy to verify during execution. Based on testing outcomes, the project objectives were achieved: the system models intersection control effectively, demonstrates core Java OOP concepts, and provides a usable interface for simulation. The results indicate that even a simplified traffic model can meaningfully represent real-world control challenges and provide a foundation for advanced smart-traffic research.
 
 \section{Limitations}
-Current limitations include:
 \begin{itemize}
-    \item Only two vehicle types (Car, Ambulance)
-    \item No GUI interface
-    \item Fixed intersection (no dynamic layout)
-    \item No statistics or reporting
+    \item Simplified single-intersection model without city-wide network behavior
+    \item Limited adaptive intelligence (no ML-based dynamic optimization)
+    \item Basic persistence using files only; no full database integration
+    \item Vehicle behavior does not include advanced factors like accidents or lane blocking
 \end{itemize}
 
 \section{Future Enhancements}
-Possible improvements:
 \begin{itemize}
-    \item Add more vehicle types
-    \item Implement GUI interface
-    \item Smart redistribution logic
-    \item Add statistics and reporting
+    \item Integrate multiple intersections with coordinated signal control
+    \item Add AI/ML-based adaptive signal timing based on live traffic density
+    \item Introduce complete database support for long-term analytics
+    \item Enhance GUI with charts, heatmaps, and real-time performance metrics
 \end{itemize}
 
 \section{Conclusion}
-This project demonstrates a minimal smart city traffic simulator using Java, focusing on OOPS principles and emergency override logic. The code is designed for easy understanding and extension, providing a foundation for more advanced traffic management systems.
+This work successfully implemented a Smart City Traffic Simulator using Java and Swing. The project combines object-oriented design, GUI interaction, event handling, and file-based logging into a functional academic application. Key learning outcomes include class hierarchy design, abstraction through abstract classes and interfaces, runtime polymorphism, timer-driven simulation modeling, and practical GUI development with Swing. The completed system meets its core objectives: simulating intersection behavior, supporting adaptive signal control, and prioritizing emergency vehicles. It provides a strong and extensible foundation for future smart-traffic enhancements.
 
 \newpage
 
@@ -173,8 +163,11 @@ This project demonstrates a minimal smart city traffic simulator using Java, foc
 % ==========================================
 \section{References}
 \begin{itemize}
-    \item [1] Java Documentation: \url{https://docs.oracle.com/en/java/}
-    \item [2] Project README and educational resources
+    \item [1] Oracle Java Documentation: \url{https://docs.oracle.com/en/java/}
+    \item [2] Oracle Swing Tutorial: \url{https://docs.oracle.com/javase/tutorial/uiswing/}
+    \item [3] Oracle Collections Framework: \url{https://docs.oracle.com/javase/8/docs/technotes/guides/collections/overview.html}
+    \item [4] Project source code and README documentation
+    \item [5] OOPJ Lab Mini Project Guidelines
 \end{itemize}
 
 \end{document}
