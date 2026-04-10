@@ -17,14 +17,54 @@ permissions:
 env:
   APP_VERSION: '2.1.2'
 
+# ══════════════════════════════════════════════════════════════════════════════
+# WORKFLOW NOTES
+# ══════════════════════════════════════════════════════════════════════════════
+# This workflow builds cross-platform installers for Smart City Traffic Simulator
+#
+# Triggers:
+#   - Tag push (v*):     Full build + GitHub Release
+#   - Branch push:       Build only, no release
+#   - Manual trigger:    Build only
+#
+# Platforms:
+#   • macOS (arm64/x86):  DMG installer
+#   • Windows:            EXE + MSI installers
+#   • Linux:              DEB + RPM packages
+#
+# Version:  Centralized in APP_VERSION env var (currently 2.1.2)
+#           All platforms build with this version for consistency
+#
+# Build Time: ~45-60 minutes (full CI/CD chain)
+#
+# Artifacts: Retained 30 days on failed/branch builds
+#            Permanently published on GitHub Releases for tags
+# ══════════════════════════════════════════════════════════════════════════════
+
 jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
-  # macOS → SmartCityTraffic-<version>.dmg
+  # Single matrix job for all platforms:
+  #   • macOS   -> .dmg
+  #   • Windows -> .exe
+  #   • Linux   -> .deb + .rpm
   # ──────────────────────────────────────────────────────────────────────────
-  build-macos:
-    name: macOS DMG
-    runs-on: macos-latest
+  build-all:
+    name: Build (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macOS DMG
+            artifact_name: SmartCityTraffic-macOS
+          - os: windows-latest
+            label: Windows EXE
+            artifact_name: SmartCityTraffic-Windows
+          - os: ubuntu-latest
+            label: Linux DEB + RPM
+            artifact_name: SmartCityTraffic-Linux
 
     steps:
       - name: Checkout source
@@ -36,74 +76,34 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Compile
+      - name: Install RPM tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y rpm imagemagick
+
+      - name: Compile + Build JAR (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           mkdir -p out
           find src -name "*.java" | xargs javac -d out
-
-      - name: Build JAR
-        run: |
           jar --create \
               --file SmartCityTraffic.jar \
               --main-class com.smartcity.traffic.Main \
               -C out .
 
-      - name: Package DMG with jpackage
-        run: |
-          mkdir -p dist
-          jpackage \
-            --type dmg \
-            --name "SmartCityTraffic" \
-            --app-version "$APP_VERSION" \
-            --vendor "OOPS Project" \
-            --description "Smart City Traffic Simulator" \
-            --input . \
-            --main-jar SmartCityTraffic.jar \
-            --main-class com.smartcity.traffic.Main \
-            --dest dist \
-            --java-options "-Xmx512m" \
-            --mac-package-name "SmartCityTraffic"
-
-      - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SmartCityTraffic-macOS
-          path: dist/*.dmg
-          retention-days: 30
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Windows → SmartCityTraffic-<version>.exe
-  # ──────────────────────────────────────────────────────────────────────────
-  build-windows:
-    name: Windows EXE
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Compile
+      - name: Compile + Build JAR (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path out | Out-Null
           $files = Get-ChildItem -Recurse -Filter *.java src | Select-Object -ExpandProperty FullName
           javac -d out $files
-
-      - name: Build JAR
-        shell: pwsh
-        run: |
           jar --create `
               --file SmartCityTraffic.jar `
               --main-class com.smartcity.traffic.Main `
               -C out .
 
-      - name: Add WiX to PATH
+      - name: Add WiX to PATH (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           # WiX 3.x is pre-installed on windows-latest; find it dynamically.
@@ -119,7 +119,76 @@ jobs:
           Write-Host "Using WiX at: $wixDir\bin"
           "$wixDir\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Package EXE with jpackage
+      - name: Install ImageMagick (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install imagemagick -y --no-progress
+
+      - name: Prepare jpackage input (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          rm -rf package-input
+          mkdir -p package-input
+          cp SmartCityTraffic.jar package-input/
+
+      - name: Prepare jpackage input (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (Test-Path package-input) {
+            Remove-Item -Recurse -Force package-input
+          }
+          New-Item -ItemType Directory -Force -Path package-input | Out-Null
+          Copy-Item -Path SmartCityTraffic.jar -Destination package-input
+
+      - name: Convert logo to ICO (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          convert logo.jpeg -resize 256x256 package-input/logo.ico
+
+      - name: Convert logo to ICNS (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          rm -rf icon.iconset
+          mkdir -p icon.iconset
+          sips -z 16 16 logo.jpeg --out icon.iconset/icon_16x16.png
+          sips -z 32 32 logo.jpeg --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32 logo.jpeg --out icon.iconset/icon_32x32.png
+          sips -z 64 64 logo.jpeg --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128 logo.jpeg --out icon.iconset/icon_128x128.png
+          sips -z 256 256 logo.jpeg --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256 logo.jpeg --out icon.iconset/icon_256x256.png
+          sips -z 512 512 logo.jpeg --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512 logo.jpeg --out icon.iconset/icon_512x512.png
+          sips -z 1024 1024 logo.jpeg --out icon.iconset/icon_512x512@2x.png
+          iconutil -c icns icon.iconset -o package-input/logo.icns
+
+      - name: Convert logo to ICO (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          magick logo.jpeg -resize 256x256 package-input/logo.ico
+
+      - name: Package DMG (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          jpackage \
+            --type dmg \
+            --name "SmartCityTraffic" \
+            --app-version "$APP_VERSION" \
+            --vendor "OOPS Project" \
+            --description "Smart City Traffic Simulator" \
+            --input package-input \
+            --main-jar SmartCityTraffic.jar \
+            --main-class com.smartcity.traffic.Main \
+            --icon package-input/logo.icns \
+            --dest dist \
+            --java-options "-Xmx512m" \
+            --mac-package-name "SmartCityTraffic"
+
+      - name: Package EXE (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
@@ -129,9 +198,10 @@ jobs:
             --app-version "$env:APP_VERSION" `
             --vendor "OOPS Project" `
             --description "Smart City Traffic Simulator" `
-            --input . `
+            --input package-input `
             --main-jar SmartCityTraffic.jar `
             --main-class com.smartcity.traffic.Main `
+            --icon package-input/logo.ico `
             --dest dist `
             --java-options "-Xmx512m" `
             --win-shortcut `
@@ -139,46 +209,8 @@ jobs:
             --win-menu-group "Smart City" `
             --win-dir-chooser
 
-      - name: Upload EXE artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SmartCityTraffic-Windows
-          path: dist/*.exe
-          retention-days: 30
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Linux → smartcitytraffic-<version>.deb + .rpm
-  # ──────────────────────────────────────────────────────────────────────────
-  build-linux:
-    name: Linux DEB + RPM
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Install RPM tools
-        run: sudo apt-get install -y rpm
-
-      - name: Compile
-        run: |
-          mkdir -p out
-          find src -name "*.java" | xargs javac -d out
-
-      - name: Build JAR
-        run: |
-          jar --create \
-              --file SmartCityTraffic.jar \
-              --main-class com.smartcity.traffic.Main \
-              -C out .
-
-      - name: Package DEB with jpackage
+      - name: Package DEB + RPM (Linux)
+        if: runner.os == 'Linux'
         run: |
           mkdir -p dist
           jpackage \
@@ -187,47 +219,49 @@ jobs:
             --app-version "$APP_VERSION" \
             --vendor "OOPS Project" \
             --description "Smart City Traffic Simulator" \
-            --input . \
+            --input package-input \
             --main-jar SmartCityTraffic.jar \
             --main-class com.smartcity.traffic.Main \
+            --icon package-input/logo.ico \
             --dest dist \
             --java-options "-Xmx512m" \
             --linux-shortcut \
             --linux-menu-group "Education"
 
-      - name: Package RPM with jpackage
-        run: |
           jpackage \
             --type rpm \
             --name "smartcitytraffic" \
             --app-version "$APP_VERSION" \
             --vendor "OOPS Project" \
             --description "Smart City Traffic Simulator" \
-            --input . \
+            --input package-input \
             --main-jar SmartCityTraffic.jar \
             --main-class com.smartcity.traffic.Main \
+            --icon package-input/logo.ico \
             --dest dist \
             --java-options "-Xmx512m" \
             --linux-shortcut \
             --linux-menu-group "Education"
 
-      - name: Upload Linux artifacts
+      - name: Upload platform artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SmartCityTraffic-Linux
+          name: ${{ matrix.artifact_name }}
           path: |
+            dist/*.dmg
+            dist/*.exe
             dist/*.deb
             dist/*.rpm
           retention-days: 30
 
   # ──────────────────────────────────────────────────────────────────────────
   # Release → only runs when a version tag is pushed (e.g. git tag v1.1)
-  # Waits for all 3 builds, then publishes a GitHub Release with every file.
+  # Waits for matrix build, then publishes a GitHub Release with explicit files.
   # ──────────────────────────────────────────────────────────────────────────
   release:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
-    needs: [ build-macos, build-windows, build-linux ]
+    needs: [ build-all ]
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
@@ -255,15 +289,15 @@ jobs:
       - name: Prepare release body
         run: |
           cat > release-body.md <<'EOF'
-          ## Smart City Traffic Simulator 2.1.2
+          ## Smart City Traffic Simulator Latest
 
           ### Downloads
           | Platform | Installer |
           |----------|-----------|
-          | 🍎 macOS | `SmartCityTraffic-2.1.2.dmg` |
-          | 🪟 Windows | `SmartCityTraffic-2.1.2.exe` |
-          | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_2.1.2-1_amd64.deb` |
-          | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-2.1.2-1.x86_64.rpm` |
+          | 🍎 macOS | `SmartCityTraffic_latest.dmg` |
+          | 🪟 Windows | `SmartCityTraffic_latest.exe` |
+          | 🐧 Linux (Debian/Ubuntu) | `smartcitytraffic_latest_amd64.deb` |
+          | 🐧 Linux (Fedora/RHEL) | `smartcitytraffic-latest.x86_64.rpm` |
 
           > **No Java required** — all installers bundle their own JRE.
 
@@ -281,6 +315,10 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: "Smart City Traffic Simulator ${{ github.ref_name }}"
           body_path: release-body.md
-          files: release-files/*
+          files: |
+            release-files/*.dmg
+            release-files/*.exe
+            release-files/*.deb
+            release-files/*.rpm
           draft: false
           prerelease: false
