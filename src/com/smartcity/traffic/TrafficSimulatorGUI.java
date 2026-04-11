@@ -52,6 +52,7 @@ public class TrafficSimulatorGUI extends JFrame {
     private ArrayList<Vehicle> vehicles;
     private Timer simulationTimer;
     private Timer updateTimer;
+    private final Random random = new Random();
 
     // ── Statistics ────────────────────────────────────────────────────────────
     private int totalVehiclesPassed;
@@ -65,6 +66,8 @@ public class TrafficSimulatorGUI extends JFrame {
     private static final int BASE_TIMER_DELAY = 50; // ms – base animation refresh
     private static final int UPDATE_DELAY = 1000; // ms – signal update rate
     private static final int ROAD_HALF_WIDTH = 70; // half of the 140px road width
+    private static final int DEFAULT_SPAWN_DISTANCE = 200;
+    private static final int MIN_VEHICLE_GAP = 14;
 
     // Curated car colour palette for visual variety
     private static final Color[] CAR_COLORS = {
@@ -274,7 +277,7 @@ public class TrafficSimulatorGUI extends JFrame {
             }
             String label = icons[i] + " From " + displayLane;
             spawnTrafficButtons[i] = createStyledButton(label, btnColors[i]);
-            spawnTrafficButtons[i].addActionListener(e -> spawnHeavyTraffic(lane));
+            spawnTrafficButtons[i].addActionListener(e -> spawnSingleVehicle(lane));
             spawnPanel.add(spawnTrafficButtons[i]);
             if (i < 3)
                 spawnPanel.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -422,22 +425,118 @@ public class TrafficSimulatorGUI extends JFrame {
         if (trafficController.isPaused())
             return;
 
-        for (int i = vehicles.size() - 1; i >= 0; i--) {
-            Vehicle vehicle = vehicles.get(i);
-            String laneID = vehicle.getLaneID();
+        // Move lane-by-lane in travel order so following vehicles can be clamped
+        // behind the already-moved vehicle in front.
+        for (String laneID : TrafficController.getLaneSequence()) {
             TrafficLight laneLight = trafficController.getTrafficLight(laneID);
             String signalState = laneLight != null ? laneLight.getCurrentState() : "RED";
 
-            // Only move if the light for this vehicle's lane is GREEN or YELLOW
-            // (Ambulance handles its own logic in move())
-            vehicle.move(signalState);
+            List<Vehicle> laneVehicles = getLaneVehiclesInTravelOrder(laneID);
+            Vehicle vehicleAhead = null;
 
-            if (vehicle.hasPassedIntersection()) {
+            for (Vehicle vehicle : laneVehicles) {
+                if (vehicle instanceof Ambulance) {
+                    ((Ambulance) vehicle).setBypassRequested(vehicleAhead != null);
+                }
+
+                vehicle.move(signalState);
+
+                if (vehicleAhead != null && isSameTravelPath(vehicleAhead, vehicle)) {
+                    enforceLaneSpacing(vehicleAhead, vehicle);
+                }
+                vehicleAhead = vehicle;
+            }
+        }
+
+        for (int i = vehicles.size() - 1; i >= 0; i--) {
+            if (vehicles.get(i).hasPassedIntersection()) {
                 vehicles.remove(i);
                 totalVehiclesPassed++;
             }
         }
         updateStatistics();
+    }
+
+    private List<Vehicle> getLaneVehiclesInTravelOrder(String laneID) {
+        List<Vehicle> laneVehicles = new ArrayList<>();
+        for (Vehicle vehicle : vehicles) {
+            if (laneID.equals(vehicle.getLaneID()) && !vehicle.hasPassedIntersection()) {
+                laneVehicles.add(vehicle);
+            }
+        }
+
+        laneVehicles.sort((a, b) -> {
+            switch (laneID) {
+                case "NORTH":
+                    return Integer.compare(a.getY(), b.getY()); // smaller y is ahead
+                case "SOUTH":
+                    return Integer.compare(b.getY(), a.getY()); // larger y is ahead
+                case "EAST":
+                    return Integer.compare(b.getX(), a.getX()); // larger x is ahead
+                case "WEST":
+                    return Integer.compare(a.getX(), b.getX()); // smaller x is ahead
+                default:
+                    return 0;
+            }
+        });
+        return laneVehicles;
+    }
+
+    private void enforceLaneSpacing(Vehicle vehicleAhead, Vehicle followingVehicle) {
+        int ambulanceExtraGap = (vehicleAhead instanceof Ambulance || followingVehicle instanceof Ambulance) ? 10 : 0;
+        int minCenterDistance = (getVehicleLength(vehicleAhead) + getVehicleLength(followingVehicle)) / 2
+            + MIN_VEHICLE_GAP + ambulanceExtraGap;
+
+        switch (followingVehicle.getLaneID()) {
+            case "NORTH": {
+                int minFollowingY = vehicleAhead.getY() + minCenterDistance;
+                if (followingVehicle.getY() < minFollowingY) {
+                    followingVehicle.y = minFollowingY;
+                }
+                break;
+            }
+            case "SOUTH": {
+                int maxFollowingY = vehicleAhead.getY() - minCenterDistance;
+                if (followingVehicle.getY() > maxFollowingY) {
+                    followingVehicle.y = maxFollowingY;
+                }
+                break;
+            }
+            case "EAST": {
+                int maxFollowingX = vehicleAhead.getX() - minCenterDistance;
+                if (followingVehicle.getX() > maxFollowingX) {
+                    followingVehicle.x = maxFollowingX;
+                }
+                break;
+            }
+            case "WEST": {
+                int minFollowingX = vehicleAhead.getX() + minCenterDistance;
+                if (followingVehicle.getX() < minFollowingX) {
+                    followingVehicle.x = minFollowingX;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    private boolean isSameTravelPath(Vehicle ahead, Vehicle behind) {
+        if (!ahead.getLaneID().equals(behind.getLaneID())) {
+            return false;
+        }
+
+        final int pathTolerance = 12;
+        switch (ahead.getLaneID()) {
+            case "NORTH":
+            case "SOUTH":
+                return Math.abs(ahead.getX() - behind.getX()) <= pathTolerance;
+            case "EAST":
+            case "WEST":
+                return Math.abs(ahead.getY() - behind.getY()) <= pathTolerance;
+            default:
+                return true;
+        }
     }
 
     // ── Control panel label updates ───────────────────────────────────────────
@@ -642,50 +741,17 @@ public class TrafficSimulatorGUI extends JFrame {
 
     // ── Vehicle spawning ──────────────────────────────────────────────────────
 
-    private void spawnHeavyTraffic(String laneID) {
-        Random random = new Random();
-        int count = 5 + random.nextInt(4); // 5–8 vehicles
-
-        int cx = INTERSECTION_SIZE / 2;
-        int cy = INTERSECTION_SIZE / 2;
-        int spacing = 70;
-        int startDistance = 150;
-
-        for (int i = 0; i < count; i++) {
-            int vehicleType = random.nextInt(3);
-            Vehicle vehicle;
-
-            switch (laneID) {
-                case "NORTH":
-                    vehicle = createVehicle(vehicleType,
-                            cx + Vehicle.NORTH_LANE_OFFSET,
-                            cy + ROAD_HALF_WIDTH + startDistance + (i * spacing),
-                            laneID);
-                    break;
-                case "SOUTH":
-                    vehicle = createVehicle(vehicleType,
-                            cx - Vehicle.SOUTH_LANE_OFFSET,
-                            cy - ROAD_HALF_WIDTH - startDistance - (i * spacing),
-                            laneID);
-                    break;
-                case "EAST":
-                    vehicle = createVehicle(vehicleType,
-                            cx - ROAD_HALF_WIDTH - startDistance - (i * spacing),
-                            cy + Vehicle.EAST_LANE_OFFSET,
-                            laneID);
-                    break;
-                case "WEST":
-                    vehicle = createVehicle(vehicleType,
-                            cx + ROAD_HALF_WIDTH + startDistance + (i * spacing),
-                            cy - Vehicle.WEST_LANE_OFFSET,
-                            laneID);
-                    break;
-                default:
-                    return;
-            }
-            vehicles.add(vehicle);
+    private void spawnSingleVehicle(String laneID) {
+        int vehicleType = random.nextInt(3);
+        int vehicleLength = getVehicleLengthByType(vehicleType);
+        Point spawnPoint = getNextSpawnPoint(laneID, vehicleLength);
+        if (spawnPoint == null) {
+            return;
         }
-        System.out.println("Spawned " + count + " vehicles to " + laneID + " lane");
+
+        Vehicle vehicle = createVehicle(vehicleType, spawnPoint.x, spawnPoint.y, laneID);
+        vehicles.add(vehicle);
+        System.out.println("Spawned 1 " + vehicle.getVehicleType() + " in " + laneID + " lane");
     }
 
     /**
@@ -694,7 +760,6 @@ public class TrafficSimulatorGUI extends JFrame {
      * @param type 0 = PrivateCar (random colour), 1 = PublicBus, 2 = Motorcycle
      */
     private Vehicle createVehicle(int type, int x, int y, String laneID) {
-        Random random = new Random();
         switch (type) {
             case 0:
                 return new PrivateCar(x, y, laneID, CAR_COLORS[random.nextInt(CAR_COLORS.length)]);
@@ -708,37 +773,127 @@ public class TrafficSimulatorGUI extends JFrame {
     }
 
     private void spawnAmbulance() {
-        Random random = new Random();
         String[] lanes = TrafficController.getLaneSequence();
         String randomLane = lanes[random.nextInt(lanes.length)];
 
-        int cx = INTERSECTION_SIZE / 2;
-        int cy = INTERSECTION_SIZE / 2;
-        int spawnDistance = 200;
-
-        Ambulance ambulance;
-        switch (randomLane) {
-            case "NORTH":
-                ambulance = new Ambulance(cx + Vehicle.NORTH_LANE_OFFSET,
-                        cy + ROAD_HALF_WIDTH + spawnDistance, randomLane);
-                break;
-            case "SOUTH":
-                ambulance = new Ambulance(cx - Vehicle.SOUTH_LANE_OFFSET,
-                        cy - ROAD_HALF_WIDTH - spawnDistance, randomLane);
-                break;
-            case "EAST":
-                ambulance = new Ambulance(cx - ROAD_HALF_WIDTH - spawnDistance,
-                        cy + Vehicle.EAST_LANE_OFFSET, randomLane);
-                break;
-            case "WEST":
-                ambulance = new Ambulance(cx + ROAD_HALF_WIDTH + spawnDistance,
-                        cy - Vehicle.WEST_LANE_OFFSET, randomLane);
-                break;
-            default:
-                return;
+        Point spawnPoint = getNextSpawnPoint(randomLane, 28);
+        if (spawnPoint == null) {
+            return;
         }
+
+        Ambulance ambulance = new Ambulance(spawnPoint.x, spawnPoint.y, randomLane);
         vehicles.add(ambulance);
         System.out.println("🚑 Ambulance spawned on " + randomLane + " lane!");
+    }
+
+    private Point getNextSpawnPoint(String laneID, int newVehicleLength) {
+        int cx = INTERSECTION_SIZE / 2;
+        int cy = INTERSECTION_SIZE / 2;
+
+        int spawnX;
+        int spawnY;
+        switch (laneID) {
+            case "NORTH":
+                spawnX = cx + Vehicle.NORTH_LANE_OFFSET;
+                spawnY = cy + ROAD_HALF_WIDTH + DEFAULT_SPAWN_DISTANCE;
+                break;
+            case "SOUTH":
+                spawnX = cx - Vehicle.SOUTH_LANE_OFFSET;
+                spawnY = cy - ROAD_HALF_WIDTH - DEFAULT_SPAWN_DISTANCE;
+                break;
+            case "EAST":
+                spawnX = cx - ROAD_HALF_WIDTH - DEFAULT_SPAWN_DISTANCE;
+                spawnY = cy + Vehicle.EAST_LANE_OFFSET;
+                break;
+            case "WEST":
+                spawnX = cx + ROAD_HALF_WIDTH + DEFAULT_SPAWN_DISTANCE;
+                spawnY = cy - Vehicle.WEST_LANE_OFFSET;
+                break;
+            default:
+                return null;
+        }
+
+        Vehicle backMostVehicle = getBackMostVehicleInLane(laneID);
+        if (backMostVehicle != null) {
+            int ambulanceExtraGap = (backMostVehicle instanceof Ambulance || newVehicleLength >= 28) ? 10 : 0;
+            int spacing = (getVehicleLength(backMostVehicle) + newVehicleLength) / 2
+                    + MIN_VEHICLE_GAP + ambulanceExtraGap;
+            switch (laneID) {
+                case "NORTH":
+                    spawnY = Math.max(spawnY, backMostVehicle.getY() + spacing);
+                    break;
+                case "SOUTH":
+                    spawnY = Math.min(spawnY, backMostVehicle.getY() - spacing);
+                    break;
+                case "EAST":
+                    spawnX = Math.min(spawnX, backMostVehicle.getX() - spacing);
+                    break;
+                case "WEST":
+                    spawnX = Math.max(spawnX, backMostVehicle.getX() + spacing);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return new Point(spawnX, spawnY);
+    }
+
+    private Vehicle getBackMostVehicleInLane(String laneID) {
+        Vehicle backMost = null;
+        for (Vehicle vehicle : vehicles) {
+            if (!laneID.equals(vehicle.getLaneID()) || vehicle.hasPassedIntersection()) {
+                continue;
+            }
+
+            if (backMost == null) {
+                backMost = vehicle;
+                continue;
+            }
+
+            switch (laneID) {
+                case "NORTH":
+                    if (vehicle.getY() > backMost.getY())
+                        backMost = vehicle;
+                    break;
+                case "SOUTH":
+                    if (vehicle.getY() < backMost.getY())
+                        backMost = vehicle;
+                    break;
+                case "EAST":
+                    if (vehicle.getX() < backMost.getX())
+                        backMost = vehicle;
+                    break;
+                case "WEST":
+                    if (vehicle.getX() > backMost.getX())
+                        backMost = vehicle;
+                    break;
+                default:
+                    break;
+            }
+        }
+        return backMost;
+    }
+
+    private int getVehicleLengthByType(int type) {
+        switch (type) {
+            case 1:
+                return 30; // Bus
+            case 2:
+                return 18; // Motorcycle
+            default:
+                return 24; // Car
+        }
+    }
+
+    private int getVehicleLength(Vehicle vehicle) {
+        if (vehicle instanceof PublicBus)
+            return 30;
+        if (vehicle instanceof Motorcycle)
+            return 18;
+        if (vehicle instanceof Ambulance)
+            return 28;
+        return 24;
     }
 
     // ── Statistics ────────────────────────────────────────────────────────────
